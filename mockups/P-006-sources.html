@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>データソース管理 | Forex Prediction System</title>
+    <style>
+        /* CSS Variables from Design System */
+        :root {
+            /* Primary Colors */
+            --primary: #00d4ff;
+            --primary-dark: #0099cc;
+            --primary-light: #33ddff;
+            
+            /* Secondary Colors */
+            --secondary: #1a1f2e;
+            --secondary-light: #2d3748;
+            --secondary-lighter: #4a5568;
+            
+            /* Neutral Colors */
+            --background: #0f1419;
+            --surface: #1a1f2e;
+            --surface-elevated: #2d3748;
+            --border: #4a5568;
+            --divider: #2d3748;
+            
+            /* Semantic Colors */
+            --success: #00ff88;
+            --success-bg: rgba(0, 255, 136, 0.1);
+            --warning: #fbbf24;
+            --warning-bg: rgba(251, 191, 36, 0.1);
+            --error: #ef4444;
+            --error-bg: rgba(239, 68, 68, 0.1);
+            --text-primary: #e6e8eb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            
+            /* Typography */
+            --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            --font-numeric: 'Courier New', 'SF Mono', Monaco, Menlo, 'Consolas', monospace;
+            
+            /* Font Sizes */
+            --text-xs: 0.75rem;
+            --text-sm: 0.875rem;
+            --text-base: 1rem;
+            --text-lg: 1.125rem;
+            --text-xl: 1.25rem;
+            --text-2xl: 1.5rem;
+            --text-3xl: 2rem;
+            
+            /* Font Weights */
+            --font-normal: 400;
+            --font-medium: 500;
+            --font-semibold: 600;
+            --font-bold: 700;
+            
+            /* Spacing */
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --spacing-2xl: 3rem;
+            --spacing-3xl: 4rem;
+            
+            /* Transitions */
+            --transition-base: 0.3s ease;
+        }
+        
+        /* Global Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--font-primary);
+            background: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+        
+        /* Main Layout */
+        .main-layout {
+            display: flex;
+            min-height: 100vh;
+            background: var(--background);
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            width: 280px;
+            height: 100vh;
+            padding: var(--spacing-lg);
+            overflow-y: auto;
+        }
+        
+        .nav-brand {
+            color: var(--primary);
+            font-size: var(--text-lg);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .sidebar-menu {
+            list-style: none;
+        }
+        
+        .menu-section {
+            color: var(--text-muted);
+            font-size: var(--text-xs);
+            font-weight: var(--font-semibold);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: var(--spacing-lg) var(--spacing-md) var(--spacing-sm);
+        }
+        
+        .menu-item {
+            color: var(--text-secondary);
+            padding: var(--spacing-sm) var(--spacing-md);
+            margin-bottom: var(--spacing-xs);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            text-decoration: none;
+        }
+        
+        .menu-item:hover {
+            color: var(--text-primary);
+            background: var(--surface-elevated);
+        }
+        
+        .menu-item.active {
+            color: var(--primary);
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 3px solid var(--primary);
+        }
+        
+        .menu-icon {
+            width: 18px;
+            height: 18px;
+            opacity: 0.7;
+        }
+        
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            padding: var(--spacing-xl);
+            overflow: auto;
+        }
+        
+        .page-header {
+            margin-bottom: var(--spacing-2xl);
+        }
+        
+        .page-title {
+            color: var(--text-primary);
+            font-size: var(--text-3xl);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: var(--text-lg);
+        }
+        
+        /* Card Styles */
+        .card {
+            background: linear-gradient(135deg, var(--surface-elevated), var(--border));
+            border-radius: 12px;
+            padding: var(--spacing-lg);
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all var(--transition-base);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+        
+        .card-header {
+            color: var(--primary);
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+            margin-bottom: var(--spacing-md);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+        
+        .card-title {
+            color: var(--text-primary);
+            font-size: var(--text-xl);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .card-content {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+        
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            gap: var(--spacing-lg);
+        }
+        
+        .grid-cols-1 { grid-template-columns: 1fr; }
+        .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+        
+        /* Source Status */
+        .source-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+        
+        .source-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: var(--spacing-md);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all var(--transition-base);
+        }
+        
+        .source-item:hover {
+            background: var(--surface-elevated);
+        }
+        
+        .source-info {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+        
+        .source-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--surface-elevated);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--text-lg);
+        }
+        
+        .source-details h4 {
+            color: var(--text-primary);
+            font-size: var(--text-base);
+            font-weight: var(--font-semibold);
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        .source-url {
+            color: var(--text-secondary);
+            font-size: var(--text-sm);
+            font-family: var(--font-numeric);
+        }
+        
+        .source-metrics {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-lg);
+            text-align: right;
+        }
+        
+        .metric {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+        
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: var(--text-xs);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .metric-value {
+            color: var(--text-primary);
+            font-family: var(--font-numeric);
+            font-size: var(--text-base);
+            font-weight: var(--font-bold);
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: var(--spacing-sm);
+        }
+        
+        .status-online { background: var(--success); }
+        .status-warning { background: var(--warning); }
+        .status-offline { background: var(--error); }
+        
+        /* Priority Controls */
+        .priority-controls {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .priority-value {
+            color: var(--primary);
+            font-family: var(--font-numeric);
+            font-weight: var(--font-bold);
+            min-width: 20px;
+            text-align: center;
+        }
+        
+        .priority-btn {
+            background: var(--surface-elevated);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            font-size: var(--text-xs);
+        }
+        
+        .priority-btn:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+        
+        /* Buttons */
+        .btn {
+            border: none;
+            border-radius: 8px;
+            padding: var(--spacing-md) var(--spacing-lg);
+            font-family: var(--font-primary);
+            font-size: var(--text-base);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            text-decoration: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--background);
+            font-weight: var(--font-semibold);
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+        }
+        
+        .btn-secondary {
+            background: var(--surface-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            font-weight: var(--font-medium);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--border);
+            border-color: var(--primary);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: var(--background);
+            font-weight: var(--font-semibold);
+        }
+        
+        .btn-success:hover {
+            background: #00cc7a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+        }
+        
+        .btn-warning {
+            background: var(--warning);
+            color: var(--background);
+            font-weight: var(--font-semibold);
+        }
+        
+        .btn-warning:hover {
+            background: #f59e0b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+        }
+        
+        /* File Upload */
+        .file-upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: var(--spacing-2xl);
+            text-align: center;
+            background: var(--surface);
+            transition: all var(--transition-base);
+        }
+        
+        .file-upload-area:hover {
+            border-color: var(--primary);
+            background: var(--surface-elevated);
+        }
+        
+        .file-upload-area.dragover {
+            border-color: var(--primary);
+            background: rgba(0, 212, 255, 0.1);
+        }
+        
+        .file-upload-icon {
+            font-size: var(--text-3xl);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .file-upload-text {
+            color: var(--text-primary);
+            font-size: var(--text-lg);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .file-upload-hint {
+            color: var(--text-secondary);
+            font-size: var(--text-sm);
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        /* Health Check Status */
+        .health-status {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+        
+        .health-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-sm) 0;
+            border-bottom: 1px solid var(--divider);
+        }
+        
+        .health-item:last-child {
+            border-bottom: none;
+        }
+        
+        .health-label {
+            color: var(--text-secondary);
+            font-size: var(--text-sm);
+        }
+        
+        .health-value {
+            color: var(--text-primary);
+            font-family: var(--font-numeric);
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+        }
+        
+        .health-value.success {
+            color: var(--success);
+        }
+        
+        .health-value.warning {
+            color: var(--warning);
+        }
+        
+        .health-value.error {
+            color: var(--error);
+        }
+        
+        /* Actions Section */
+        .actions-row {
+            display: flex;
+            gap: var(--spacing-md);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .action-group {
+            display: flex;
+            gap: var(--spacing-sm);
+            align-items: center;
+        }
+        
+        /* Success Rate Bar */
+        .success-rate-bar {
+            width: 80px;
+            height: 6px;
+            background: var(--surface);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .success-rate-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--error), var(--warning), var(--success));
+            transition: width var(--transition-base);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                z-index: 1000;
+                transition: left var(--transition-base);
+            }
+            
+            .sidebar.open {
+                left: 0;
+            }
+            
+            .grid-cols-2,
+            .grid-cols-3 {
+                grid-template-columns: 1fr;
+            }
+            
+            .source-metrics {
+                flex-direction: column;
+                gap: var(--spacing-sm);
+            }
+            
+            .actions-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!--
+    【CF_06引き継ぎ情報】
+    UI要件: データソース管理画面で複数データソースの稼働状況監視、優先順位設定、手動データ取得・インポート機能
+    必要API: 
+    - GET /api/sources/status - データソース稼働状況取得
+    - POST /api/sources/scrape - Webスクレイピング実行
+    - POST /api/sources/csv-import - CSV一括インポート
+    - GET /api/sources/health - ソースヘルスチェック
+    - PUT /api/sources/priority - ソース優先順位更新
+    入力データ: { 
+      priority_update: { source_id: string, priority: number },
+      csv_file: File,
+      scrape_config: { source: string, force: boolean }
+    }
+    出力データ: { 
+      sources: Array<{ id: string, name: string, url: string, status: string, success_rate: number, last_update: string, priority: number }>,
+      health_metrics: { response_time: number, availability: number, data_freshness: string },
+      job_status: { job_id: string, status: string, progress: number }
+    }
+    UI文脈: データソース管理者向け画面、データ品質監視とバックアップデータ取得の制御
+    特記事項: ファイルアップロード処理、非同期スクレイピング実行、リアルタイム状況更新
+    -->
+
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="nav-brand">🔮 Forex Prediction</div>
+            <ul class="sidebar-menu">
+                <li class="menu-section">メイン機能</li>
+                <li><a href="/dashboard" class="menu-item">
+                    <span class="menu-icon">📊</span>
+                    予測ダッシュボード
+                </a></li>
+                <li><a href="/analysis" class="menu-item">
+                    <span class="menu-icon">📈</span>
+                    詳細分析
+                </a></li>
+                <li><a href="/backtest" class="menu-item">
+                    <span class="menu-icon">🔍</span>
+                    バックテスト
+                </a></li>
+                
+                <li class="menu-section">管理機能</li>
+                <li><a href="/data-management" class="menu-item">
+                    <span class="menu-icon">🗄️</span>
+                    データ管理
+                </a></li>
+                <li><a href="/settings" class="menu-item">
+                    <span class="menu-icon">⚙️</span>
+                    予測設定
+                </a></li>
+                <li><a href="/sources" class="menu-item active">
+                    <span class="menu-icon">🌐</span>
+                    データソース管理
+                </a></li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="content-area">
+            <div class="page-header">
+                <h1 class="page-title">データソース管理</h1>
+                <p class="page-subtitle">複数データソースの統合管理・監視・優先順位設定</p>
+            </div>
+
+            <div class="grid grid-cols-1">
+                <!-- データソース一覧 -->
+                <div class="card">
+                    <div class="card-header">
+                        <span>データソース一覧</span>
+                        <div class="actions-row">
+                            <button class="btn btn-primary" onclick="runHealthCheck()">
+                                🔍 ヘルスチェック実行
+                            </button>
+                            <button class="btn btn-success" onclick="runScraping()">
+                                🕷️ スクレイピング実行
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="source-list">
+                            <!-- 日銀CSV -->
+                            <div class="source-item">
+                                <div class="source-info">
+                                    <div class="source-icon">🏛️</div>
+                                    <div class="source-details">
+                                        <h4>日本銀行 CSV データ</h4>
+                                        <div class="source-url">www.boj.or.jp/statistics/market/forex/</div>
+                                    </div>
+                                </div>
+                                <div class="source-metrics">
+                                    <div class="metric">
+                                        <div class="metric-label">成功率</div>
+                                        <div class="metric-value">98.5%</div>
+                                        <div class="success-rate-bar">
+                                            <div class="success-rate-fill" style="width: 98.5%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-label">最終更新</div>
+                                        <div class="metric-value">2時間前</div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-label">優先順位</div>
+                                        <div class="priority-controls">
+                                            <button class="priority-btn" onclick="changePriority('boj', -1)">↓</button>
+                                            <div class="priority-value">1</div>
+                                            <button class="priority-btn" onclick="changePriority('boj', 1)">↑</button>
+                                        </div>
+                                    </div>
+                                    <div class="status-indicator status-online"></div>
+                                </div>
+                            </div>
+
+                            <!-- Yahoo Finance -->
+                            <div class="source-item">
+                                <div class="source-info">
+                                    <div class="source-icon">📈</div>
+                                    <div class="source-details">
+                                        <h4>Yahoo Finance (スクレイピング)</h4>
+                                        <div class="source-url">finance.yahoo.com/quote/JPY=X/</div>
+                                    </div>
+                                </div>
+                                <div class="source-metrics">
+                                    <div class="metric">
+                                        <div class="metric-label">成功率</div>
+                                        <div class="metric-value">95.2%</div>
+                                        <div class="success-rate-bar">
+                                            <div class="success-rate-fill" style="width: 95.2%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-label">最終更新</div>
+                                        <div class="metric-value">15分前</div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-label">優先順位</div>
+                                        <div class="priority-controls">
+                                            <button class="priority-btn" onclick="changePriority('yahoo', -1)">↓</button>
+                                            <div class="priority-value">2</div>
+                                            <button class="priority-btn" onclick="changePriority('yahoo', 1)">↑</button>
+                                        </div>
+                                    </div>
+                                    <div class="status-indicator status-online"></div>
+                                </div>
+                            </div>
+
+                            <!-- Alpha Vantage -->
+                            <div class="source-item">
+                                <div class="source-info">
+                                    <div class="source-icon">🔑</div>
+                                    <div class="source-details">
+                                        <h4>Alpha Vantage API (バックアップ)</h4>
+                                        <div class="source-url">www.alphavantage.co/query</div>
+                                    </div>
+                                </div>
+                                <div class="source-metrics">
+                                    <div class="metric">
+                                        <div class="metric-label">成功率</div>
+                                        <div class="metric-value">88.7%</div>
+                                        <div class="success-rate-bar">
+                                            <div class="success-rate-fill" style="width: 88.7%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-label">最終更新</div>
+                                        <div class="metric-value">1日前</div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-label">優先順位</div>
+                                        <div class="priority-controls">
+                                            <button class="priority-btn" onclick="changePriority('alphavantage', -1)">↓</button>
+                                            <div class="priority-value">3</div>
+                                            <button class="priority-btn" onclick="changePriority('alphavantage', 1)">↑</button>
+                                        </div>
+                                    </div>
+                                    <div class="status-indicator status-warning"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2">
+                    <!-- CSV一括インポート -->
+                    <div class="card">
+                        <div class="card-header">CSV一括インポート</div>
+                        <div class="card-content">
+                            <div class="file-upload-area" onclick="document.getElementById('csvFile').click()" ondragover="handleDragOver(event)" ondrop="handleFileDrop(event)">
+                                <div class="file-upload-icon">📁</div>
+                                <div class="file-upload-text">CSVファイルをアップロード</div>
+                                <div class="file-upload-hint">日銀形式のCSVファイルをドラッグ＆ドロップまたはクリックして選択</div>
+                                <input type="file" id="csvFile" class="file-input" accept=".csv" onchange="handleFileSelect(event)">
+                            </div>
+                            <div class="actions-row" style="margin-top: var(--spacing-md);">
+                                <button class="btn btn-primary" onclick="importCSV()" disabled id="importBtn">
+                                    📥 インポート実行
+                                </button>
+                                <button class="btn btn-secondary" onclick="clearFile()">
+                                    🗑️ クリア
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ヘルスチェック結果 -->
+                    <div class="card">
+                        <div class="card-header">ヘルスチェック結果</div>
+                        <div class="card-content">
+                            <div class="health-status">
+                                <div class="health-item">
+                                    <div class="health-label">平均応答時間</div>
+                                    <div class="health-value success">245ms</div>
+                                </div>
+                                <div class="health-item">
+                                    <div class="health-label">全体可用性</div>
+                                    <div class="health-value success">99.2%</div>
+                                </div>
+                                <div class="health-item">
+                                    <div class="health-label">データ新鮮度</div>
+                                    <div class="health-value success">最新</div>
+                                </div>
+                                <div class="health-item">
+                                    <div class="health-label">エラー率</div>
+                                    <div class="health-value success">0.8%</div>
+                                </div>
+                                <div class="health-item">
+                                    <div class="health-label">最終チェック</div>
+                                    <div class="health-value">5分前</div>
+                                </div>
+                            </div>
+                            <div class="actions-row" style="margin-top: var(--spacing-md);">
+                                <button class="btn btn-warning" onclick="runFullDiagnostics()">
+                                    🔧 詳細診断
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 実行ログ -->
+                <div class="card">
+                    <div class="card-header">最近の実行ログ</div>
+                    <div class="card-content">
+                        <div class="health-status">
+                            <div class="health-item">
+                                <div class="health-label">2025-08-23 14:30:45</div>
+                                <div class="health-value success">✅ 日銀データ取得成功 (245件)</div>
+                            </div>
+                            <div class="health-item">
+                                <div class="health-label">2025-08-23 14:15:22</div>
+                                <div class="health-value success">✅ Yahoo Finance スクレイピング成功</div>
+                            </div>
+                            <div class="health-item">
+                                <div class="health-label">2025-08-23 14:00:10</div>
+                                <div class="health-value warning">⚠️ Alpha Vantage API レート制限</div>
+                            </div>
+                            <div class="health-item">
+                                <div class="health-label">2025-08-23 13:45:33</div>
+                                <div class="health-value success">✅ CSV インポート完了 (1,250件)</div>
+                            </div>
+                            <div class="health-item">
+                                <div class="health-label">2025-08-23 13:30:18</div>
+                                <div class="health-value error">❌ 接続タイムアウト (Yahoo Finance)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Priority Control Functions
+        function changePriority(sourceId, delta) {
+            // Simulate priority change
+            const priorityElement = event.target.parentElement.querySelector('.priority-value');
+            let currentPriority = parseInt(priorityElement.textContent);
+            let newPriority = Math.max(1, Math.min(3, currentPriority + delta));
+            priorityElement.textContent = newPriority;
+            
+            // Here you would call the API to update priority
+            console.log(`Updating ${sourceId} priority to ${newPriority}`);
+            
+            // Simulate API call
+            showNotification(`${sourceId}の優先順位を${newPriority}に更新しました`, 'success');
+        }
+        
+        // Health Check Functions
+        function runHealthCheck() {
+            showNotification('ヘルスチェックを実行中...', 'info');
+            
+            // Simulate health check execution
+            setTimeout(() => {
+                showNotification('ヘルスチェックが完了しました', 'success');
+                // Update health metrics in UI
+                updateHealthMetrics();
+            }, 2000);
+        }
+        
+        function runScraping() {
+            showNotification('Webスクレイピングを実行中...', 'info');
+            
+            // Simulate scraping execution
+            setTimeout(() => {
+                showNotification('スクレイピングが完了しました (152件のデータを取得)', 'success');
+                // Update source metrics in UI
+                updateSourceMetrics();
+            }, 3000);
+        }
+        
+        function runFullDiagnostics() {
+            showNotification('詳細診断を実行中...', 'info');
+            
+            // Simulate full diagnostics
+            setTimeout(() => {
+                showNotification('詳細診断が完了しました', 'success');
+            }, 5000);
+        }
+        
+        // File Upload Functions
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.currentTarget.classList.add('dragover');
+        }
+        
+        function handleFileDrop(event) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('dragover');
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0 && files[0].type === 'text/csv') {
+                handleFile(files[0]);
+            } else {
+                showNotification('CSVファイルを選択してください', 'error');
+            }
+        }
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+        
+        function handleFile(file) {
+            document.querySelector('.file-upload-text').textContent = file.name;
+            document.querySelector('.file-upload-hint').textContent = `ファイルサイズ: ${(file.size / 1024).toFixed(1)}KB`;
+            document.getElementById('importBtn').disabled = false;
+        }
+        
+        function importCSV() {
+            showNotification('CSVインポートを実行中...', 'info');
+            
+            // Simulate CSV import
+            setTimeout(() => {
+                showNotification('CSVインポートが完了しました (1,245件のレコードを追加)', 'success');
+                clearFile();
+                updateSourceMetrics();
+            }, 3000);
+        }
+        
+        function clearFile() {
+            document.getElementById('csvFile').value = '';
+            document.querySelector('.file-upload-text').textContent = 'CSVファイルをアップロード';
+            document.querySelector('.file-upload-hint').textContent = '日銀形式のCSVファイルをドラッグ＆ドロップまたはクリックして選択';
+            document.getElementById('importBtn').disabled = true;
+        }
+        
+        // Helper Functions
+        function updateHealthMetrics() {
+            // Simulate updating health metrics with new data
+            const healthValues = document.querySelectorAll('.health-value');
+            // Update with new random values for demo
+            console.log('Health metrics updated');
+        }
+        
+        function updateSourceMetrics() {
+            // Simulate updating source success rates and timestamps
+            console.log('Source metrics updated');
+        }
+        
+        function showNotification(message, type) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            // Style notification
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: var(--surface-elevated);
+                color: var(--text-primary);
+                padding: var(--spacing-md);
+                border-radius: 8px;
+                border-left: 4px solid var(--${type === 'success' ? 'success' : type === 'error' ? 'error' : 'primary'});
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                z-index: 1000;
+                animation: slideIn 0.3s ease-out;
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+        
+        // Add CSS for notification animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Auto-refresh simulation
+        setInterval(() => {
+            // Simulate real-time updates to timestamps
+            const timeElements = document.querySelectorAll('.source-metrics .metric-value');
+            // Update "last updated" times
+        }, 30000); // Every 30 seconds
+    </script>
+</body>
+</html>

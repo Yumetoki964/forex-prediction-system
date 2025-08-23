@@ -1,0 +1,85 @@
+services:
+  # Backend API Service
+  - type: web
+    name: forex-backend
+    runtime: python
+    plan: starter
+    region: oregon
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    rootDir: ./backend
+    healthCheckPath: /docs
+    autoDeploy: false
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: forex-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: forex-redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: LOG_LEVEL
+        value: "INFO"
+      - key: ENVIRONMENT
+        value: "production"
+      - key: PROJECT_NAME
+        value: "Forex Prediction System"
+
+  # Frontend Static Site
+  - type: static
+    name: forex-frontend
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: "npm ci && npm run build"
+    staticPublishPath: ./dist
+    pullRequestPreviewsEnabled: true
+    rootDir: ./frontend
+    buildFilter:
+      paths:
+        - frontend/**
+      ignoredPaths:
+        - backend/**
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-XSS-Protection
+        value: 1; mode=block
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: forex-backend
+          property: host
+
+databases:
+  # PostgreSQL Database
+  - name: forex-postgres
+    databaseName: forex_prediction
+    user: forex_user
+    plan: starter
+    region: oregon
+    postgresMajorVersion: 15
+
+  # Redis Cache
+  - name: forex-redis
+    plan: starter
+    region: oregon
+    maxmemoryPolicy: allkeys-lru

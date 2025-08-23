@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P-001: 予測ダッシュボード - Forex Prediction System</title>
+    <style>
+        /*
+        【CF_06引き継ぎ情報】
+        UI要件: ドル円の現在レートと1週間〜1ヶ月後の予測レート、5段階売買シグナル、リスク指標、アラートを統合表示する投資判断支援ダッシュボード
+        必要API: 
+        - GET /api/rates/current - 現在レート取得（5分毎更新）
+        - GET /api/predictions/latest - 最新予測取得（1週間、2週間、3週間、1ヶ月）
+        - GET /api/signals/current - 売買シグナル取得（5段階評価）
+        - GET /api/metrics/risk - リスク指標取得（ボラティリティ、信頼区間）
+        - GET /api/alerts/active - アクティブアラート取得
+        入力データ: なし（全て取得系API）
+        出力データ: {
+          current_rate: { rate: number, timestamp: string, change_24h: number, change_percentage_24h: number },
+          predictions: [{ period: string, predicted_rate: number, confidence_interval: [number, number], volatility: number }],
+          signal: { type: string, confidence: number, reasoning: string },
+          risk_metrics: { volatility: number, confidence_level: number },
+          alerts: [{ id: string, type: string, message: string, created_at: string }]
+        }
+        UI文脈: メインダッシュボード（ログイン後のホーム画面）、リアルタイム更新（5分間隔）、アラート表示時は注意喚起
+        特記事項: WebSocket実装または定期ポーリングでリアルタイム更新、数値変更時はアニメーション表示、レスポンシブ対応
+        -->
+
+        /* CSS変数定義 - プロフェッショナル・トレーディングテーマ */
+        :root {
+            /* プライマリカラー */
+            --primary: #00d4ff;
+            --primary-dark: #0099cc;
+            --primary-light: #33ddff;
+            
+            /* セカンダリカラー */
+            --secondary: #1a1f2e;
+            --secondary-light: #2d3748;
+            --secondary-lighter: #4a5568;
+            
+            /* ニュートラルカラー */
+            --background: #0f1419;
+            --surface: #1a1f2e;
+            --surface-elevated: #2d3748;
+            --border: #4a5568;
+            --divider: #2d3748;
+            
+            /* セマンティックカラー */
+            --success: #00ff88;
+            --success-bg: rgba(0, 255, 136, 0.1);
+            --warning: #fbbf24;
+            --warning-bg: rgba(251, 191, 36, 0.1);
+            --error: #ef4444;
+            --error-bg: rgba(239, 68, 68, 0.1);
+            --text-primary: #e6e8eb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            
+            /* フォント */
+            --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            --font-numeric: 'Courier New', 'SF Mono', Monaco, Menlo, 'Consolas', monospace;
+            
+            /* フォントサイズ */
+            --text-xs: 0.75rem;
+            --text-sm: 0.875rem;
+            --text-base: 1rem;
+            --text-lg: 1.125rem;
+            --text-xl: 1.25rem;
+            --text-2xl: 1.5rem;
+            --text-3xl: 2rem;
+            --text-4xl: 2.5rem;
+            --text-5xl: 3rem;
+            
+            /* スペーシング */
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --spacing-2xl: 3rem;
+            --spacing-3xl: 4rem;
+            
+            /* フォントウェイト */
+            --font-normal: 400;
+            --font-medium: 500;
+            --font-semibold: 600;
+            --font-bold: 700;
+            
+            /* トランジション */
+            --transition-fast: 0.15s ease-out;
+            --transition-base: 0.3s ease-out;
+            --transition-slow: 0.5s ease-out;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--font-primary);
+            background: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+        
+        /* レイアウト */
+        .main-layout {
+            display: flex;
+            min-height: 100vh;
+            background: var(--background);
+        }
+        
+        .sidebar {
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            width: 280px;
+            height: 100vh;
+            padding: var(--spacing-lg);
+            overflow-y: auto;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .nav-brand {
+            color: var(--primary);
+            font-size: var(--text-lg);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--spacing-xl);
+            padding-bottom: var(--spacing-lg);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .sidebar-menu {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .menu-section {
+            color: var(--text-muted);
+            font-size: var(--text-xs);
+            font-weight: var(--font-semibold);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: var(--spacing-lg) var(--spacing-md) var(--spacing-sm);
+        }
+        
+        .menu-item {
+            color: var(--text-secondary);
+            padding: var(--spacing-sm) var(--spacing-md);
+            margin-bottom: var(--spacing-xs);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .menu-item:hover {
+            color: var(--text-primary);
+            background: var(--surface-elevated);
+        }
+        
+        .menu-item.active {
+            color: var(--primary);
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 3px solid var(--primary);
+        }
+        
+        .menu-icon {
+            width: 18px;
+            height: 18px;
+            opacity: 0.7;
+        }
+        
+        .content-area {
+            flex: 1;
+            margin-left: 280px;
+            padding: var(--spacing-lg);
+            overflow: auto;
+        }
+        
+        .dashboard-header {
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .dashboard-title {
+            color: var(--text-primary);
+            font-size: var(--text-3xl);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .last-updated {
+            color: var(--text-secondary);
+            font-size: var(--text-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        /* グリッドシステム */
+        .grid {
+            display: grid;
+            gap: var(--spacing-lg);
+        }
+        
+        .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+        .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        
+        .col-span-2 { grid-column: span 2; }
+        .col-span-3 { grid-column: span 3; }
+        
+        /* カード */
+        .card {
+            background: linear-gradient(135deg, var(--surface-elevated), var(--border));
+            border-radius: 12px;
+            padding: var(--spacing-lg);
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all var(--transition-base);
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+        
+        .card-header {
+            color: var(--primary);
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+            margin-bottom: var(--spacing-sm);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .card-value {
+            color: var(--text-primary);
+            font-family: var(--font-numeric);
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        .card-meta {
+            color: var(--text-secondary);
+            font-size: var(--text-xs);
+        }
+        
+        /* 特大カード（現在レート用） */
+        .card-hero {
+            background: linear-gradient(135deg, var(--surface-elevated), rgba(0, 212, 255, 0.05));
+            border: 2px solid var(--primary);
+        }
+        
+        .card-hero .card-value {
+            font-size: var(--text-4xl);
+            color: var(--primary);
+        }
+        
+        .rate-change {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-sm);
+        }
+        
+        .change-positive {
+            color: var(--success);
+        }
+        
+        .change-negative {
+            color: var(--error);
+        }
+        
+        .change-neutral {
+            color: var(--warning);
+        }
+        
+        /* 予測カード */
+        .prediction-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+        }
+        
+        .prediction-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: var(--spacing-md);
+            transition: all var(--transition-base);
+        }
+        
+        .prediction-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
+        }
+        
+        .prediction-period {
+            color: var(--text-muted);
+            font-size: var(--text-xs);
+            font-weight: var(--font-semibold);
+            text-transform: uppercase;
+        }
+        
+        .prediction-rate {
+            color: var(--text-primary);
+            font-family: var(--font-numeric);
+            font-size: var(--text-lg);
+            font-weight: var(--font-bold);
+            margin: var(--spacing-xs) 0;
+        }
+        
+        .confidence-range {
+            color: var(--text-secondary);
+            font-family: var(--font-numeric);
+            font-size: var(--text-xs);
+        }
+        
+        /* シグナルカード */
+        .signal-card {
+            text-align: center;
+            padding: var(--spacing-xl);
+        }
+        
+        .signal-type {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .signal-strong-buy { color: var(--success); }
+        .signal-buy { color: var(--success); opacity: 0.8; }
+        .signal-hold { color: var(--warning); }
+        .signal-sell { color: var(--error); opacity: 0.8; }
+        .signal-strong-sell { color: var(--error); }
+        
+        .signal-confidence {
+            color: var(--text-secondary);
+            font-size: var(--text-sm);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .signal-reasoning {
+            color: var(--text-muted);
+            font-size: var(--text-xs);
+            line-height: 1.4;
+        }
+        
+        /* リスク指標 */
+        .risk-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+        }
+        
+        .risk-item {
+            text-align: center;
+        }
+        
+        .risk-label {
+            color: var(--text-secondary);
+            font-size: var(--text-xs);
+            text-transform: uppercase;
+        }
+        
+        .risk-value {
+            color: var(--text-primary);
+            font-family: var(--font-numeric);
+            font-size: var(--text-xl);
+            font-weight: var(--font-bold);
+            margin-top: var(--spacing-xs);
+        }
+        
+        /* アラート */
+        .alerts-section {
+            margin-top: var(--spacing-lg);
+        }
+        
+        .alert {
+            border-radius: 8px;
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-sm);
+            font-size: var(--text-sm);
+            border-left: 4px solid;
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+        }
+        
+        .alert-success {
+            background: var(--success-bg);
+            border-left-color: var(--success);
+            color: var(--success);
+        }
+        
+        .alert-warning {
+            background: var(--warning-bg);
+            border-left-color: var(--warning);
+            color: var(--warning);
+        }
+        
+        .alert-error {
+            background: var(--error-bg);
+            border-left-color: var(--error);
+            color: var(--error);
+        }
+        
+        .alert-time {
+            color: var(--text-muted);
+            font-size: var(--text-xs);
+            margin-top: var(--spacing-xs);
+        }
+        
+        /* アニメーション */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        @keyframes numberUpdate {
+            0% { color: var(--text-primary); }
+            50% { color: var(--primary); transform: scale(1.05); }
+            100% { color: var(--text-primary); transform: scale(1); }
+        }
+        
+        .animate-number-update {
+            animation: numberUpdate 0.8s ease-out;
+        }
+        
+        /* レスポンシブ */
+        @media (max-width: 768px) {
+            .sidebar {
+                left: -280px;
+                transition: left var(--transition-base);
+            }
+            
+            .sidebar.open {
+                left: 0;
+            }
+            
+            .content-area {
+                margin-left: 0;
+                padding: var(--spacing-md);
+            }
+            
+            .grid-cols-2,
+            .grid-cols-3,
+            .grid-cols-4 {
+                grid-template-columns: 1fr;
+            }
+            
+            .card-hero .card-value {
+                font-size: var(--text-3xl);
+            }
+            
+            .dashboard-title {
+                font-size: var(--text-2xl);
+            }
+        }
+        
+        /* モバイル用ハンバーガーメニュー */
+        .mobile-menu-button {
+            display: none;
+            position: fixed;
+            top: var(--spacing-md);
+            left: var(--spacing-md);
+            z-index: 1001;
+            background: var(--primary);
+            color: var(--background);
+            border: none;
+            border-radius: 6px;
+            padding: var(--spacing-sm);
+            cursor: pointer;
+            font-size: var(--text-lg);
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-menu-button {
+                display: block;
+            }
+            
+            .content-area {
+                padding-top: calc(var(--spacing-md) + 2.5rem);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-layout">
+        <!-- サイドバー -->
+        <aside class="sidebar" id="sidebar">
+            <div class="nav-brand">Forex Prediction</div>
+            <ul class="sidebar-menu">
+                <li class="menu-section">メイン機能</li>
+                <li class="menu-item active">
+                    <span class="menu-icon">📊</span>
+                    予測ダッシュボード
+                </li>
+                <li class="menu-item">
+                    <span class="menu-icon">📈</span>
+                    詳細分析
+                </li>
+                <li class="menu-item">
+                    <span class="menu-icon">🔍</span>
+                    バックテスト
+                </li>
+                
+                <li class="menu-section">管理機能</li>
+                <li class="menu-item">
+                    <span class="menu-icon">🗄️</span>
+                    データ管理
+                </li>
+                <li class="menu-item">
+                    <span class="menu-icon">⚙️</span>
+                    予測設定
+                </li>
+                <li class="menu-item">
+                    <span class="menu-icon">🔗</span>
+                    データソース管理
+                </li>
+            </ul>
+        </aside>
+        
+        <!-- モバイルメニューボタン -->
+        <button class="mobile-menu-button" onclick="toggleSidebar()">☰</button>
+        
+        <!-- メインコンテンツ -->
+        <main class="content-area">
+            <div class="dashboard-header">
+                <h1 class="dashboard-title">予測ダッシュボード</h1>
+                <div class="last-updated">
+                    <span class="status-indicator"></span>
+                    最終更新: 2025-08-23 14:23:45 JST
+                </div>
+            </div>
+            
+            <!-- 現在レートセクション -->
+            <div class="grid grid-cols-1">
+                <div class="card card-hero">
+                    <div class="card-header">USD/JPY 現在レート</div>
+                    <div class="card-value" id="currentRate">149.85</div>
+                    <div class="rate-change">
+                        <span class="change-positive" id="changeAmount">+0.45</span>
+                        <span class="change-positive" id="changePercent">(+0.30%)</span>
+                        <span class="card-meta">24時間変化</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 予測・シグナル・リスクセクション -->
+            <div class="grid grid-cols-3" style="margin-top: var(--spacing-xl);">
+                <!-- 予測カード -->
+                <div class="col-span-2">
+                    <div class="card">
+                        <div class="card-header">予測レート</div>
+                        <div class="prediction-grid">
+                            <div class="prediction-card">
+                                <div class="prediction-period">1週間後</div>
+                                <div class="prediction-rate">150.22</div>
+                                <div class="confidence-range">148.95 - 151.49</div>
+                            </div>
+                            <div class="prediction-card">
+                                <div class="prediction-period">2週間後</div>
+                                <div class="prediction-rate">150.68</div>
+                                <div class="confidence-range">148.11 - 153.25</div>
+                            </div>
+                            <div class="prediction-card">
+                                <div class="prediction-period">3週間後</div>
+                                <div class="prediction-rate">151.15</div>
+                                <div class="confidence-range">147.33 - 154.97</div>
+                            </div>
+                            <div class="prediction-card">
+                                <div class="prediction-period">1ヶ月後</div>
+                                <div class="prediction-rate">151.89</div>
+                                <div class="confidence-range">146.22 - 157.56</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- シグナルカード -->
+                <div class="card signal-card">
+                    <div class="card-header">売買シグナル</div>
+                    <div class="signal-type signal-buy">買い</div>
+                    <div class="signal-confidence">信頼度: 76%</div>
+                    <div class="signal-reasoning">
+                        テクニカル指標の上昇トレンド継続と、経済指標の改善により買いシグナルを検出
+                    </div>
+                </div>
+            </div>
+            
+            <!-- リスク指標セクション -->
+            <div class="grid grid-cols-2" style="margin-top: var(--spacing-lg);">
+                <div class="card">
+                    <div class="card-header">リスク指標</div>
+                    <div class="risk-metrics">
+                        <div class="risk-item">
+                            <div class="risk-label">ボラティリティ</div>
+                            <div class="risk-value">1.24%</div>
+                        </div>
+                        <div class="risk-item">
+                            <div class="risk-label">信頼区間</div>
+                            <div class="risk-value">85%</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">モデル情報</div>
+                    <div class="card-meta">
+                        <div style="margin-bottom: var(--spacing-xs);">
+                            <strong>アンサンブル構成:</strong> LSTM 60% + XGBoost 40%
+                        </div>
+                        <div style="margin-bottom: var(--spacing-xs);">
+                            <strong>学習期間:</strong> 過去3年間
+                        </div>
+                        <div>
+                            <strong>バックテスト精度:</strong> 68.5% (1週間予測)
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- アラートセクション -->
+            <div class="alerts-section">
+                <h2 style="color: var(--text-primary); font-size: var(--text-lg); margin-bottom: var(--spacing-md);">
+                    アクティブアラート
+                </h2>
+                
+                <div class="alert alert-warning">
+                    <div>
+                        <div>⚠️ <strong>注意:</strong> 1週間後の予測でボラティリティが平均を上回っています</div>
+                        <div class="alert-time">2025-08-23 13:45:12</div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-success">
+                    <div>
+                        <div>✅ <strong>情報:</strong> データ収集が正常に完了しました</div>
+                        <div class="alert-time">2025-08-23 06:00:15</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // モバイルサイドバーの制御
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+        
+        // 現在時刻の更新
+        function updateLastUpdated() {
+            const now = new Date();
+            const timeString = now.toLocaleString('ja-JP', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                timeZone: 'Asia/Tokyo'
+            }) + ' JST';
+            
+            document.querySelector('.last-updated').innerHTML = `
+                <span class="status-indicator"></span>
+                最終更新: ${timeString}
+            `;
+        }
+        
+        // 数値更新のアニメーション
+        function animateValueUpdate(elementId, newValue) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.classList.add('animate-number-update');
+                element.textContent = newValue;
+                setTimeout(() => {
+                    element.classList.remove('animate-number-update');
+                }, 800);
+            }
+        }
+        
+        // リアルタイム更新のシミュレーション（5分間隔）
+        function simulateRealtimeUpdate() {
+            const currentRates = [149.75, 149.82, 149.91, 149.88, 149.95, 150.02, 149.89, 149.85];
+            let index = 0;
+            
+            setInterval(() => {
+                const rate = currentRates[index % currentRates.length];
+                const change = (rate - 149.40).toFixed(2);
+                const changePercent = ((change / 149.40) * 100).toFixed(2);
+                
+                animateValueUpdate('currentRate', rate.toFixed(2));
+                
+                const changeElement = document.getElementById('changeAmount');
+                const percentElement = document.getElementById('changePercent');
+                
+                if (change > 0) {
+                    changeElement.className = 'change-positive';
+                    percentElement.className = 'change-positive';
+                    changeElement.textContent = `+${change}`;
+                    percentElement.textContent = `(+${changePercent}%)`;
+                } else if (change < 0) {
+                    changeElement.className = 'change-negative';
+                    percentElement.className = 'change-negative';
+                    changeElement.textContent = change;
+                    percentElement.textContent = `(${changePercent}%)`;
+                } else {
+                    changeElement.className = 'change-neutral';
+                    percentElement.className = 'change-neutral';
+                    changeElement.textContent = '±0.00';
+                    percentElement.textContent = '(±0.00%)';
+                }
+                
+                updateLastUpdated();
+                index++;
+            }, 5000); // 5秒間隔でデモ更新（実際は5分間隔）
+        }
+        
+        // 画面外をクリックでサイドバーを閉じる（モバイル）
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const menuButton = document.querySelector('.mobile-menu-button');
+            
+            if (window.innerWidth <= 768 && 
+                sidebar.classList.contains('open') && 
+                !sidebar.contains(event.target) && 
+                !menuButton.contains(event.target)) {
+                sidebar.classList.remove('open');
+            }
+        });
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateLastUpdated();
+            simulateRealtimeUpdate();
+        });
+    </script>
+</body>
+</html>

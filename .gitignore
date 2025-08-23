@@ -1,0 +1,79 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# FastAPI
+.env
+!.env.local
+!.env.staging
+!.env.production
+!.env.example
+
+# Database
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# React/Vite
+dist/
+dist-ssr/
+*.local
+
+# Generated files
+frontend/src/generated/api/
+frontend/src/generated/models/
+!frontend/src/generated/.gitkeep
+!frontend/src/generated/api/.gitkeep
+!frontend/src/generated/models/.gitkeep
+
+# Docker
+.dockerignore
+
+# Testing
+.nyc_output/
+coverage/
+*.lcov
+.pytest_cache/
+
+# Environment variables
+.env.development.local
+.env.test.local

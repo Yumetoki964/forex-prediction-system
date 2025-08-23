@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P-004: データ管理 - Forex Prediction System</title>
+    
+    <style>
+        /* CSS変数定義 - Bloomberg風ダークモードテーマ */
+        :root {
+            /* プライマリカラー */
+            --primary: #00d4ff;
+            --primary-dark: #0099cc;
+            --primary-light: #33ddff;
+            
+            /* セカンダリカラー */
+            --secondary: #1a1f2e;
+            --secondary-light: #2d3748;
+            --secondary-lighter: #4a5568;
+            
+            /* ニュートラルカラー */
+            --background: #0f1419;
+            --surface: #1a1f2e;
+            --surface-elevated: #2d3748;
+            --border: #4a5568;
+            --divider: #2d3748;
+            
+            /* セマンティックカラー */
+            --success: #00ff88;
+            --success-bg: rgba(0, 255, 136, 0.1);
+            --warning: #fbbf24;
+            --warning-bg: rgba(251, 191, 36, 0.1);
+            --error: #ef4444;
+            --error-bg: rgba(239, 68, 68, 0.1);
+            --text-primary: #e6e8eb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            
+            /* フォント */
+            --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            --font-numeric: 'Courier New', 'SF Mono', Monaco, Menlo, 'Consolas', monospace;
+            
+            /* フォントサイズ */
+            --text-xs: 0.75rem;
+            --text-sm: 0.875rem;
+            --text-base: 1rem;
+            --text-lg: 1.125rem;
+            --text-xl: 1.25rem;
+            --text-2xl: 1.5rem;
+            --text-3xl: 2rem;
+            --text-4xl: 2.5rem;
+            
+            /* スペーシング */
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --spacing-2xl: 3rem;
+            --spacing-3xl: 4rem;
+            
+            /* トランジション */
+            --transition-base: 0.3s ease;
+            --transition-fast: 0.15s ease-out;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-primary);
+            background: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* レイアウト */
+        .main-layout {
+            display: flex;
+            min-height: 100vh;
+            background: var(--background);
+        }
+
+        .sidebar {
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            width: 280px;
+            height: 100vh;
+            padding: var(--spacing-lg);
+            overflow-y: auto;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            color: var(--primary);
+            font-size: var(--text-lg);
+            font-weight: 700;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+        }
+
+        .menu-section {
+            color: var(--text-muted);
+            font-size: var(--text-xs);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: var(--spacing-lg) var(--spacing-md) var(--spacing-sm);
+        }
+
+        .menu-item {
+            color: var(--text-secondary);
+            padding: var(--spacing-sm) var(--spacing-md);
+            margin-bottom: var(--spacing-xs);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            text-decoration: none;
+        }
+
+        .menu-item:hover {
+            color: var(--text-primary);
+            background: var(--surface-elevated);
+        }
+
+        .menu-item.active {
+            color: var(--primary);
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 3px solid var(--primary);
+        }
+
+        .menu-icon {
+            width: 18px;
+            height: 18px;
+            opacity: 0.7;
+        }
+
+        .content-area {
+            margin-left: 280px;
+            flex: 1;
+            padding: var(--spacing-xl);
+            min-height: 100vh;
+        }
+
+        .page-header {
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .page-title {
+            color: var(--text-primary);
+            font-size: var(--text-3xl);
+            font-weight: 700;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .page-description {
+            color: var(--text-secondary);
+            font-size: var(--text-lg);
+        }
+
+        /* グリッドシステム */
+        .grid {
+            display: grid;
+            gap: var(--spacing-lg);
+        }
+
+        .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+        .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+        /* カード */
+        .card {
+            background: linear-gradient(135deg, var(--surface-elevated), var(--border));
+            border-radius: 12px;
+            padding: var(--spacing-lg);
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all var(--transition-base);
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-header {
+            color: var(--primary);
+            font-size: var(--text-sm);
+            font-weight: 500;
+            margin-bottom: var(--spacing-sm);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .card-value {
+            color: var(--text-primary);
+            font-family: var(--font-numeric);
+            font-size: var(--text-2xl);
+            font-weight: 700;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .card-meta {
+            color: var(--text-secondary);
+            font-size: var(--text-xs);
+        }
+
+        /* ボタン */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--background);
+            border: none;
+            border-radius: 8px;
+            padding: var(--spacing-md) var(--spacing-lg);
+            font-family: var(--font-primary);
+            font-weight: 600;
+            font-size: var(--text-base);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--surface-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: var(--spacing-md) var(--spacing-lg);
+            font-family: var(--font-primary);
+            font-weight: 500;
+            font-size: var(--text-base);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+            border-color: var(--primary);
+        }
+
+        /* ステータス表示 */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: 20px;
+            font-size: var(--text-xs);
+            font-weight: 500;
+        }
+
+        .status-online {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .status-warning {
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+
+        .status-offline {
+            background: var(--error-bg);
+            color: var(--error);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* プログレスバー */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--surface);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            border-radius: 4px;
+            transition: width var(--transition-base);
+        }
+
+        /* データテーブル */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface-elevated);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: var(--spacing-md);
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table th {
+            background: var(--surface);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: var(--text-sm);
+        }
+
+        .data-table td {
+            color: var(--text-primary);
+        }
+
+        .data-table tr:hover {
+            background: var(--border);
+        }
+
+        /* 設定セクション */
+        .settings-section {
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .settings-title {
+            color: var(--text-primary);
+            font-size: var(--text-xl);
+            font-weight: 600;
+            margin-bottom: var(--spacing-lg);
+            padding-bottom: var(--spacing-sm);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .form-label {
+            display: block;
+            color: var(--text-primary);
+            font-size: var(--text-sm);
+            font-weight: 500;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .form-select {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: var(--spacing-md);
+            color: var(--text-primary);
+            font-family: var(--font-primary);
+            font-size: var(--text-base);
+            transition: all var(--transition-base);
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
+        }
+
+        /* アラート */
+        .alert {
+            border-radius: 8px;
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+            font-size: var(--text-sm);
+            border-left: 4px solid;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .alert-success {
+            background: var(--success-bg);
+            border-left-color: var(--success);
+            color: var(--success);
+        }
+
+        .alert-warning {
+            background: var(--warning-bg);
+            border-left-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .alert-error {
+            background: var(--error-bg);
+            border-left-color: var(--error);
+            color: var(--error);
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 1024px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                z-index: 1000;
+                transition: left var(--transition-base);
+            }
+            
+            .sidebar.open {
+                left: 0;
+            }
+            
+            .content-area {
+                margin-left: 0;
+            }
+            
+            .grid-cols-2,
+            .grid-cols-3,
+            .grid-cols-4 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-layout">
+        <!-- サイドバー -->
+        <aside class="sidebar">
+            <div class="nav-brand">Forex Prediction</div>
+            <ul class="sidebar-menu">
+                <li class="menu-section">メイン機能</li>
+                <li><a href="/dashboard" class="menu-item">
+                    <span class="menu-icon">📊</span>
+                    予測ダッシュボード
+                </a></li>
+                <li><a href="/analysis" class="menu-item">
+                    <span class="menu-icon">📈</span>
+                    詳細分析
+                </a></li>
+                <li><a href="/backtest" class="menu-item">
+                    <span class="menu-icon">🔍</span>
+                    バックテスト
+                </a></li>
+                
+                <li class="menu-section">管理機能</li>
+                <li><a href="/data-management" class="menu-item active">
+                    <span class="menu-icon">🗄️</span>
+                    データ管理
+                </a></li>
+                <li><a href="/settings" class="menu-item">
+                    <span class="menu-icon">⚙️</span>
+                    予測設定
+                </a></li>
+                <li><a href="/sources" class="menu-item">
+                    <span class="menu-icon">🌐</span>
+                    データソース管理
+                </a></li>
+            </ul>
+        </aside>
+
+        <!-- メインコンテンツ -->
+        <main class="content-area">
+            <div class="page-header">
+                <h1 class="page-title">データ管理</h1>
+                <p class="page-description">データ収集・品質監視・修復の統合管理</p>
+            </div>
+
+            <!-- データ収集状況セクション -->
+            <div class="settings-section">
+                <h2 class="settings-title">データ収集状況</h2>
+                <div class="grid grid-cols-3">
+                    <!-- データカバー率 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span>📊</span>
+                            データカバー率
+                        </div>
+                        <div class="card-value">98.7%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 98.7%"></div>
+                        </div>
+                        <div class="card-meta">1990年1月〜現在 (12,456日中12,285日)</div>
+                    </div>
+
+                    <!-- 最終更新日時 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span>🕐</span>
+                            最終更新日時
+                        </div>
+                        <div class="card-value">2025-08-23</div>
+                        <div class="card-meta">06:00 JST 自動更新完了</div>
+                        <div class="status-indicator status-online">
+                            <span class="status-dot"></span>
+                            正常
+                        </div>
+                    </div>
+
+                    <!-- 次回更新予定 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span>⏰</span>
+                            次回更新予定
+                        </div>
+                        <div class="card-value">2025-08-24</div>
+                        <div class="card-meta">06:00 JST (約10時間後)</div>
+                        <div class="status-indicator status-online">
+                            <span class="status-dot"></span>
+                            スケジュール済み
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- データ品質レポート -->
+            <div class="settings-section">
+                <h2 class="settings-title">データ品質レポート</h2>
+                <div class="grid grid-cols-2">
+                    <!-- 欠損率 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span>⚠️</span>
+                            データ欠損率
+                        </div>
+                        <div class="card-value">1.3%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 1.3%; background: var(--warning)"></div>
+                        </div>
+                        <div class="card-meta">171日のデータが欠損中</div>
+                        <div class="status-indicator status-warning">
+                            <span class="status-dot"></span>
+                            要修復
+                        </div>
+                    </div>
+
+                    <!-- 異常値検出 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span>🔍</span>
+                            異常値検出
+                        </div>
+                        <div class="card-value">3</div>
+                        <div class="card-meta">過去30日間で3件の異常値を検出</div>
+                        <div class="alert alert-warning">
+                            <span>⚠️</span>
+                            2025-08-20: レート変動幅が統計的閾値を超過
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 自動収集スケジュール設定 -->
+            <div class="settings-section">
+                <h2 class="settings-title">自動収集スケジュール設定</h2>
+                <div class="card">
+                    <div class="grid grid-cols-2">
+                        <div class="form-group">
+                            <label class="form-label" for="schedule-time">実行時刻</label>
+                            <select id="schedule-time" class="form-select">
+                                <option value="06:00" selected>06:00 JST</option>
+                                <option value="07:00">07:00 JST</option>
+                                <option value="08:00">08:00 JST</option>
+                                <option value="09:00">09:00 JST</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="retry-count">再試行回数</label>
+                            <select id="retry-count" class="form-select">
+                                <option value="1">1回</option>
+                                <option value="2">2回</option>
+                                <option value="3" selected>3回</option>
+                                <option value="5">5回</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-top: var(--spacing-lg);">
+                        <button class="btn-secondary">設定を更新</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 手動データ収集 -->
+            <div class="settings-section">
+                <h2 class="settings-title">手動データ収集実行</h2>
+                <div class="card">
+                    <p style="margin-bottom: var(--spacing-lg); color: var(--text-secondary);">
+                        最新のドル円レートデータを手動で収集します。通常は自動収集により不要ですが、緊急時やトラブル対応時にご利用ください。
+                    </p>
+                    <div style="display: flex; gap: var(--spacing-md);">
+                        <button class="btn-primary">
+                            <span>🔄</span>
+                            今すぐデータ収集を実行
+                        </button>
+                        <button class="btn-secondary">
+                            <span>📊</span>
+                            収集履歴を確認
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- データ修復ツール -->
+            <div class="settings-section">
+                <h2 class="settings-title">データ修復ツール（欠損補完）</h2>
+                <div class="card">
+                    <div class="alert alert-warning">
+                        <span>⚠️</span>
+                        171日分の欠損データが検出されています。線形補間による自動修復を実行できます。
+                    </div>
+                    <div class="grid grid-cols-2" style="margin-top: var(--spacing-lg);">
+                        <div class="form-group">
+                            <label class="form-label" for="repair-method">修復方法</label>
+                            <select id="repair-method" class="form-select">
+                                <option value="linear" selected>線形補間</option>
+                                <option value="spline">スプライン補間</option>
+                                <option value="moving-average">移動平均</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="repair-period">修復対象期間</label>
+                            <select id="repair-period" class="form-select">
+                                <option value="all" selected>全期間 (171日)</option>
+                                <option value="recent">最近30日</option>
+                                <option value="custom">カスタム期間</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-top: var(--spacing-lg);">
+                        <button class="btn-primary">
+                            <span>🔧</span>
+                            データ修復を実行
+                        </button>
+                        <button class="btn-secondary">
+                            <span>👁️</span>
+                            修復プレビュー
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- データソース稼働状況 -->
+            <div class="settings-section">
+                <h2 class="settings-title">データソース稼働状況</h2>
+                <div class="card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>データソース</th>
+                                <th>ステータス</th>
+                                <th>最終取得</th>
+                                <th>成功率</th>
+                                <th>アクション</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <strong>Yahoo Finance</strong><br>
+                                    <span style="color: var(--text-secondary); font-size: var(--text-xs);">プライマリソース</span>
+                                </td>
+                                <td>
+                                    <div class="status-indicator status-online">
+                                        <span class="status-dot"></span>
+                                        正常
+                                    </div>
+                                </td>
+                                <td>
+                                    <span style="font-family: var(--font-numeric);">2025-08-23 06:00</span><br>
+                                    <span style="color: var(--text-secondary); font-size: var(--text-xs);">2分前</span>
+                                </td>
+                                <td>
+                                    <span style="font-family: var(--font-numeric); color: var(--success);">99.2%</span><br>
+                                    <span style="color: var(--text-secondary); font-size: var(--text-xs);">過去30日</span>
+                                </td>
+                                <td>
+                                    <button class="btn-secondary" style="padding: var(--spacing-xs) var(--spacing-sm); font-size: var(--text-xs);">テスト</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>日本銀行CSV</strong><br>
+                                    <span style="color: var(--text-secondary); font-size: var(--text-xs);">履歴データソース</span>
+                                </td>
+                                <td>
+                                    <div class="status-indicator status-online">
+                                        <span class="status-dot"></span>
+                                        正常
+                                    </div>
+                                </td>
+                                <td>
+                                    <span style="font-family: var(--font-numeric);">2025-08-23 06:00</span><br>
+                                    <span style="color: var(--text-secondary); font-size: var(--text-xs);">2分前</span>
+                                </td>
+                                <td>
+                                    <span style="font-family: var(--font-numeric); color: var(--success);">100.0%</span><br>
+                                    <span style="color: var(--text-secondary); font-size: var(--text-xs);">過去30日</span>
+                                </td>
+                                <td>
+                                    <button class="btn-secondary" style="padding: var(--spacing-xs) var(--spacing-sm); font-size: var(--text-xs);">ダウンロード</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Alpha Vantage API</strong><br>
+                                    <span style="color: var(--text-secondary); font-size: var(--text-xs);">バックアップソース</span>
+                                </td>
+                                <td>
+                                    <div class="status-indicator status-warning">
+                                        <span class="status-dot"></span>
+                                        制限中
+                                    </div>
+                                </td>
+                                <td>
+                                    <span style="font-family: var(--font-numeric);">2025-08-23 05:45</span><br>
+                                    <span style="color: var(--text-secondary); font-size: var(--text-xs);">17分前</span>
+                                </td>
+                                <td>
+                                    <span style="font-family: var(--font-numeric); color: var(--warning);">78.4%</span><br>
+                                    <span style="color: var(--text-secondary); font-size: var(--text-xs);">過去30日</span>
+                                </td>
+                                <td>
+                                    <button class="btn-secondary" style="padding: var(--spacing-xs) var(--spacing-sm); font-size: var(--text-xs);">設定</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!--
+    【CF_06引き継ぎ情報】
+
+    ## P-004: データ管理ページ API要件
+
+    ### データ収集状況表示
+    UI要件: データカバー率、最終更新日時、次回更新予定を表示
+    必要API: GET /api/data/status
+    入力データ: なし
+    出力データ: {
+        coverage_percentage: number,
+        total_days: number,
+        available_days: number,
+        last_update: string,
+        next_update: string,
+        status: "normal" | "warning" | "error"
+    }
+    UI文脈: ページ初期表示時に自動取得、5分毎に自動更新
+    特記事項: リアルタイム更新でステータス変化を即座に反映
+
+    ### データ品質レポート表示
+    UI要件: 欠損率、異常値検出結果を表示
+    必要API: GET /api/data/quality
+    入力データ: なし
+    出力データ: {
+        missing_rate: number,
+        missing_days: number,
+        anomalies: Array<{
+            date: string,
+            description: string,
+            severity: "low" | "medium" | "high"
+        }>,
+        quality_score: number
+    }
+    UI文脈: データ収集状況と同時取得
+    特記事項: 異常値は過去30日間のものを表示、重要度で色分け
+
+    ### 自動収集スケジュール更新
+    UI要件: 実行時刻と再試行回数の設定更新
+    必要API: PUT /api/data/schedule
+    入力データ: {
+        execution_time: string,
+        retry_count: number,
+        enabled: boolean
+    }
+    出力データ: {
+        success: boolean,
+        message: string,
+        next_execution: string
+    }
+    UI文脈: 設定変更後、次回実行予定時刻を即座に更新
+    特記事項: バリデーション失敗時はエラーメッセージ表示
+
+    ### 手動データ収集実行
+    UI要件: 手動収集ボタンクリックで即座に実行
+    必要API: POST /api/data/collect
+    入力データ: {
+        force_update: boolean,
+        source_priority: Array<string>
+    }
+    出力データ: {
+        job_id: string,
+        status: "started",
+        estimated_duration: number
+    }
+    UI文脈: 実行中は進行状況を表示、完了後にデータ状況を更新
+    特記事項: 非同期処理のため、ジョブIDで進行状況を定期取得
+
+    ### データ修復実行
+    UI要件: 修復方法・対象期間選択後に修復実行
+    必要API: POST /api/data/repair
+    入力データ: {
+        method: "linear" | "spline" | "moving-average",
+        period: "all" | "recent" | "custom",
+        custom_start_date?: string,
+        custom_end_date?: string
+    }
+    出力データ: {
+        job_id: string,
+        affected_days: number,
+        estimated_duration: number
+    }
+    UI文脈: 修復前にプレビュー機能、実行中は進行状況表示
+    特記事項: 大量データ処理のため長時間処理、完了通知必須
+
+    ### データソース稼働状況取得
+    UI要件: 各データソースの稼働状況テーブル表示
+    必要API: GET /api/data/sources
+    入力データ: なし
+    出力データ: {
+        sources: Array<{
+            name: string,
+            type: "primary" | "backup" | "historical",
+            status: "online" | "warning" | "offline",
+            last_success: string,
+            success_rate: number,
+            description: string
+        }>
+    }
+    UI文脈: 初期表示時と手動更新時に取得
+    特記事項: ステータス表示は色とアイコンで視覚的に区別
+
+    ### データソースヘルスチェック
+    UI要件: 各ソースのテストボタンでヘルスチェック実行
+    必要API: POST /api/sources/health/{source_name}
+    入力データ: なし
+    出力データ: {
+        source_name: string,
+        status: "healthy" | "degraded" | "unhealthy",
+        response_time: number,
+        last_check: string,
+        details: string
+    }
+    UI文脈: テストボタンクリック時に個別実行
+    特記事項: 各ソース独立実行、結果はリアルタイム表示
+
+    ## 画面遷移・状態変化
+    1. 初期表示: 全データを並行取得してダッシュボード表示
+    2. 自動更新: 5分毎にデータ収集状況を自動更新
+    3. 手動実行: 非同期処理開始後、進行状況をポーリング
+    4. 設定変更: バリデーション後即座に反映、次回実行時刻更新
+
+    ## 特記事項
+    - 非同期処理（データ収集・修復）は進行状況の定期取得が必要
+    - データ修復は影響が大きいため、プレビュー機能で事前確認
+    - エラー時は具体的なメッセージとリカバリ手順を表示
+    - ステータス表示は統一されたカラーコード（緑=正常、黄=警告、赤=エラー）
+    -->
+
+    <script>
+        // データ収集状況の自動更新（5分毎）
+        function updateDataStatus() {
+            // 実装時はここで /api/data/status を呼び出し
+            console.log('データ収集状況を更新中...');
+        }
+
+        // 手動データ収集実行
+        function triggerDataCollection() {
+            // 実装時はここで /api/data/collect を呼び出し
+            console.log('手動データ収集を実行中...');
+            // ボタンを無効化し、進行状況表示に切り替え
+        }
+
+        // データ修復実行
+        function triggerDataRepair() {
+            const method = document.getElementById('repair-method').value;
+            const period = document.getElementById('repair-period').value;
+            // 実装時はここで /api/data/repair を呼び出し
+            console.log(`データ修復実行: ${method}, ${period}`);
+        }
+
+        // 5分毎の自動更新を開始
+        setInterval(updateDataStatus, 5 * 60 * 1000);
+
+        // ページ読み込み時の初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDataStatus();
+        });
+    </script>
+</body>
+</html>

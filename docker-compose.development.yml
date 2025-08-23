@@ -1,0 +1,31 @@
+# Development environment overrides
+version: '3.8'
+
+services:
+  backend:
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
+
+  frontend:
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/dist
+    command: ["sh", "-c", "npm run dev -- --host 0.0.0.0 --port 80"]
+    stdin_open: true
+    tty: true
+
+  postgres:
+    environment:
+      POSTGRES_DB: forex_prediction_local
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"

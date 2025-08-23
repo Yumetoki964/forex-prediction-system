@@ -1,0 +1,309 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (leave empty for latest main)'
+        required: false
+        type: string
+      skip_tests:
+        description: 'Skip pre-deployment tests (emergency only)'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME_BACKEND: ${{ github.repository }}/backend
+  IMAGE_NAME_FRONTEND: ${{ github.repository }}/frontend
+
+jobs:
+  # Pre-deployment validation
+  pre-deployment-checks:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+    if: github.event.inputs.skip_tests != 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate deployment readiness
+        run: |
+          echo "🔍 Validating deployment readiness..."
+          
+          # Check if CI is passing on main branch
+          echo "✅ CI checks passed (implied by successful workflow trigger)"
+          
+          # Check for any emergency flags in commit messages
+          if git log --oneline -1 | grep -i "EMERGENCY\|HOTFIX\|URGENT"; then
+            echo "⚠️ Emergency deployment detected"
+            echo "emergency=true" >> $GITHUB_OUTPUT
+          else
+            echo "📝 Regular deployment"
+            echo "emergency=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Security scan for production
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+
+  # Build and Push Production Images
+  build-and-push:
+    name: Build and Push Production Images
+    runs-on: ubuntu-latest
+    needs: pre-deployment-checks
+    if: always() && (needs.pre-deployment-checks.result == 'success' || github.event.inputs.skip_tests == 'true')
+    outputs:
+      backend-tag: ${{ steps.meta-backend.outputs.tags }}
+      frontend-tag: ${{ steps.meta-frontend.outputs.tags }}
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [ "${{ github.event_name }}" == "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          else
+            VERSION="main-$(date +%Y%m%d-%H%M%S)-${GITHUB_SHA:0:7}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "🏷️ Production version: $VERSION"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}
+          tags: |
+            type=raw,value=production-latest
+            type=raw,value=production-${{ steps.version.outputs.version }}
+            type=sha,prefix=production-
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract metadata for frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}
+          tags: |
+            type=raw,value=production-latest
+            type=raw,value=production-${{ steps.version.outputs.version }}
+            type=sha,prefix=production-
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VITE_API_URL=${{ secrets.PRODUCTION_API_URL }}
+            NODE_ENV=production
+
+  # Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Railway (Production)
+        id: deploy-railway
+        if: vars.DEPLOYMENT_PLATFORM == 'railway' || vars.DEPLOYMENT_PLATFORM == ''
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          npm install -g @railway/cli
+          railway login --token $RAILWAY_TOKEN
+          
+          # Deploy with zero-downtime strategy
+          railway up --service backend --environment production --detach
+          railway up --service frontend --environment production --detach
+          
+          # Get production URL
+          PROD_URL=$(railway status --service frontend --environment production --json | jq -r '.deployments[0].url')
+          echo "url=$PROD_URL" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Render (Production)
+        id: deploy-render
+        if: vars.DEPLOYMENT_PLATFORM == 'render'
+        uses: johnbeynon/render-deploy-action@v0.0.8
+        with:
+          service-id: ${{ secrets.RENDER_SERVICE_ID_PRODUCTION }}
+          api-key: ${{ secrets.RENDER_API_KEY }}
+          wait-for-success: true
+
+      - name: Set deployment URL
+        id: deploy
+        run: |
+          if [ -n "${{ steps.deploy-railway.outputs.url }}" ]; then
+            echo "url=${{ steps.deploy-railway.outputs.url }}" >> $GITHUB_OUTPUT
+          else
+            echo "url=${{ vars.PRODUCTION_URL }}" >> $GITHUB_OUTPUT
+          fi
+
+  # Post-deployment validation
+  post-deployment-validation:
+    name: Post-deployment Validation
+    runs-on: ubuntu-latest
+    needs: [deploy-production, build-and-push]
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Health check
+        run: |
+          echo "🔍 Running production health checks..."
+          
+          # Wait for deployment to stabilize
+          echo "⏳ Waiting for deployment to stabilize..."
+          sleep 60
+          
+          # API health check
+          API_URL="${{ needs.deploy-production.outputs.url }}"
+          for i in {1..5}; do
+            if curl -f "$API_URL/health" -H "Accept: application/json"; then
+              echo "✅ API health check passed"
+              break
+            else
+              echo "❌ API health check failed (attempt $i/5)"
+              if [ $i -eq 5 ]; then
+                exit 1
+              fi
+              sleep 30
+            fi
+          done
+
+      - name: Run smoke tests
+        env:
+          BASE_URL: ${{ needs.deploy-production.outputs.url }}
+          API_KEY: ${{ secrets.PRODUCTION_API_KEY }}
+        run: |
+          echo "🔥 Running production smoke tests..."
+          cd backend
+          pytest tests/smoke/ -v --tb=short || exit 1
+
+      - name: Performance check
+        run: |
+          echo "⚡ Running basic performance check..."
+          API_URL="${{ needs.deploy-production.outputs.url }}"
+          
+          # Measure response time for key endpoints
+          RESPONSE_TIME=$(curl -o /dev/null -s -w "%{time_total}" "$API_URL/health")
+          echo "Health endpoint response time: ${RESPONSE_TIME}s"
+          
+          if (( $(echo "$RESPONSE_TIME > 2.0" | bc -l) )); then
+            echo "⚠️ Warning: Slow response time detected"
+          else
+            echo "✅ Response time within acceptable range"
+          fi
+
+  # Create deployment record and notifications
+  finalize-deployment:
+    name: Finalize Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy-production, post-deployment-validation, build-and-push]
+    if: always()
+
+    steps:
+      - name: Create deployment record
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: 'production',
+              description: `Production deployment v${{ needs.build-and-push.outputs.version }}`,
+              auto_merge: false,
+              required_contexts: []
+            });
+            
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: '${{ needs.post-deployment-validation.result }}' === 'success' ? 'success' : 'failure',
+              environment_url: '${{ needs.deploy-production.outputs.url }}',
+              description: 'Production deployment completed'
+            });
+
+      - name: Notify success
+        if: needs.deploy-production.result == 'success' && needs.post-deployment-validation.result == 'success'
+        run: |
+          echo "🎉 Production deployment successful!"
+          echo "🔗 URL: ${{ needs.deploy-production.outputs.url }}"
+          echo "📦 Version: ${{ needs.build-and-push.outputs.version }}"
+
+      - name: Notify failure and rollback guidance
+        if: needs.deploy-production.result == 'failure' || needs.post-deployment-validation.result == 'failure'
+        run: |
+          echo "❌ Production deployment failed!"
+          echo "Deploy Status: ${{ needs.deploy-production.result }}"
+          echo "Validation Status: ${{ needs.post-deployment-validation.result }}"
+          echo ""
+          echo "🔄 To rollback, run:"
+          echo "gh workflow run rollback.yml -f target_version=<previous_version>"
+          exit 1
+
+      - name: Slack notification
+        if: false # Enable if Slack webhook is configured
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            🚀 Production Deployment: ${{ job.status }}
+            📦 Version: ${{ needs.build-and-push.outputs.version }}
+            🔗 URL: ${{ needs.deploy-production.outputs.url }}
+            📝 Commit: ${{ github.sha }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}

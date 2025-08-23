@@ -1,0 +1,462 @@
+name: Dependency Update
+
+on:
+  schedule:
+    # Run every Monday at 9:00 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      update_type:
+        description: 'Type of dependency update'
+        required: true
+        default: 'minor'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - all
+      create_pr:
+        description: 'Create pull request for updates'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "18"
+
+jobs:
+  # Check for available updates
+  check-updates:
+    name: Check for Available Updates
+    runs-on: ubuntu-latest
+    outputs:
+      python-updates: ${{ steps.check-python.outputs.updates }}
+      node-updates: ${{ steps.check-node.outputs.updates }}
+      has-updates: ${{ steps.summary.outputs.has-updates }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Check Python dependency updates
+        id: check-python
+        run: |
+          cd backend
+          pip install pip-check-updates pip-audit
+          
+          # Check for outdated packages
+          pip list --outdated --format=json > outdated-python.json
+          PYTHON_UPDATES=$(cat outdated-python.json | jq length)
+          echo "updates=$PYTHON_UPDATES" >> $GITHUB_OUTPUT
+          
+          echo "📦 Python packages with updates available: $PYTHON_UPDATES"
+          if [ $PYTHON_UPDATES -gt 0 ]; then
+            echo "Python packages to update:"
+            cat outdated-python.json | jq '.[] | "\(.name): \(.version) -> \(.latest_version)"'
+          fi
+
+      - name: Check Node.js dependency updates
+        id: check-node
+        run: |
+          cd frontend
+          
+          # Check for outdated packages
+          npm outdated --json > outdated-node.json || true
+          NODE_UPDATES=$(cat outdated-node.json | jq 'keys | length' || echo "0")
+          echo "updates=$NODE_UPDATES" >> $GITHUB_OUTPUT
+          
+          echo "📦 Node.js packages with updates available: $NODE_UPDATES"
+          if [ $NODE_UPDATES -gt 0 ]; then
+            echo "Node.js packages to update:"
+            npm outdated
+          fi
+
+      - name: Summary
+        id: summary
+        run: |
+          TOTAL_UPDATES=$((${{ steps.check-python.outputs.updates }} + ${{ steps.check-node.outputs.updates }}))
+          if [ $TOTAL_UPDATES -gt 0 ]; then
+            echo "has-updates=true" >> $GITHUB_OUTPUT
+            echo "✅ Found $TOTAL_UPDATES packages with available updates"
+          else
+            echo "has-updates=false" >> $GITHUB_OUTPUT
+            echo "✅ All dependencies are up to date"
+          fi
+
+      - name: Upload update reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-update-reports
+          path: |
+            backend/outdated-python.json
+            frontend/outdated-node.json
+
+  # Update Python dependencies
+  update-python:
+    name: Update Python Dependencies
+    runs-on: ubuntu-latest
+    needs: check-updates
+    if: needs.check-updates.outputs.python-updates != '0'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install current dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Update Python dependencies
+        run: |
+          cd backend
+          
+          # Create backup of requirements
+          cp requirements.txt requirements.txt.backup
+          
+          # Update dependencies based on type
+          case "${{ github.event.inputs.update_type || 'minor' }}" in
+            "patch")
+              echo "📦 Updating patch versions only..."
+              pip-compile --upgrade-package "*" --annotation-style line requirements.in
+              ;;
+            "minor")
+              echo "📦 Updating minor versions..."
+              pip list --outdated --format=json | jq -r '.[] | select(.latest_version | split(".")[1] > (.version | split(".")[1])) | .name' | xargs -I {} pip install "{}>=$(pip show {} | grep Version | cut -d' ' -f2 | cut -d'.' -f1-2).0"
+              pip freeze > requirements.txt
+              ;;
+            "major"|"all")
+              echo "📦 Updating all versions..."
+              pip list --outdated --format=json | jq -r '.[] | .name' | xargs pip install -U
+              pip freeze > requirements.txt
+              ;;
+          esac
+
+      - name: Test updated dependencies
+        run: |
+          cd backend
+          
+          # Install updated dependencies
+          pip install -r requirements.txt
+          
+          # Run basic import tests
+          python -c "
+          import fastapi
+          import sqlalchemy
+          import pandas
+          import numpy
+          import sklearn
+          print('✅ All major imports successful')
+          "
+
+      - name: Run quick test suite
+        run: |
+          cd backend
+          pytest tests/ -x --tb=short -q
+
+      - name: Generate update summary
+        run: |
+          cd backend
+          echo "# Python Dependencies Update Summary" > python-update-summary.md
+          echo "Updated: $(date)" >> python-update-summary.md
+          echo "" >> python-update-summary.md
+          
+          if ! diff -q requirements.txt.backup requirements.txt > /dev/null; then
+            echo "## Changes Made:" >> python-update-summary.md
+            echo '```diff' >> python-update-summary.md
+            diff requirements.txt.backup requirements.txt || true >> python-update-summary.md
+            echo '```' >> python-update-summary.md
+          else
+            echo "No changes were made to requirements.txt" >> python-update-summary.md
+          fi
+
+      - name: Upload Python update artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-updates
+          path: |
+            backend/requirements.txt
+            backend/requirements.txt.backup
+            backend/python-update-summary.md
+
+  # Update Node.js dependencies
+  update-node:
+    name: Update Node.js Dependencies
+    runs-on: ubuntu-latest
+    needs: check-updates
+    if: needs.check-updates.outputs.node-updates != '0'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install current dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Update Node.js dependencies
+        run: |
+          cd frontend
+          
+          # Create backup of package files
+          cp package.json package.json.backup
+          cp package-lock.json package-lock.json.backup
+          
+          # Update dependencies based on type
+          case "${{ github.event.inputs.update_type || 'minor' }}" in
+            "patch")
+              echo "📦 Updating patch versions only..."
+              npm update
+              ;;
+            "minor")
+              echo "📦 Updating minor versions..."
+              npx npm-check-updates -u --target minor
+              npm install
+              ;;
+            "major"|"all")
+              echo "📦 Updating all versions..."
+              npx npm-check-updates -u
+              npm install
+              ;;
+          esac
+
+      - name: Test updated dependencies
+        run: |
+          cd frontend
+          
+          # Run type checking
+          npm run type-check
+          
+          # Run linting
+          npm run lint
+          
+          # Attempt build
+          npm run build
+
+      - name: Generate update summary
+        run: |
+          cd frontend
+          echo "# Node.js Dependencies Update Summary" > node-update-summary.md
+          echo "Updated: $(date)" >> node-update-summary.md
+          echo "" >> node-update-summary.md
+          
+          if ! diff -q package.json.backup package.json > /dev/null; then
+            echo "## Changes Made:" >> node-update-summary.md
+            echo '```diff' >> node-update-summary.md
+            diff package.json.backup package.json || true >> node-update-summary.md
+            echo '```' >> node-update-summary.md
+            
+            echo "" >> node-update-summary.md
+            echo "## Updated Packages:" >> node-update-summary.md
+            npm ls --depth=0 --parseable | awk -F'node_modules/' '{print $2}' | grep -v '^$' >> node-update-summary.md
+          else
+            echo "No changes were made to package.json" >> node-update-summary.md
+          fi
+
+      - name: Upload Node.js update artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: node-updates
+          path: |
+            frontend/package.json
+            frontend/package-lock.json
+            frontend/package.json.backup
+            frontend/package-lock.json.backup
+            frontend/node-update-summary.md
+
+  # Security audit after updates
+  security-audit:
+    name: Security Audit After Updates
+    runs-on: ubuntu-latest
+    needs: [update-python, update-node]
+    if: always() && needs.check-updates.outputs.has-updates == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download update artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Apply Python updates and audit
+        if: needs.update-python.result == 'success'
+        run: |
+          cd backend
+          if [ -f "../python-updates/requirements.txt" ]; then
+            cp ../python-updates/requirements.txt .
+            pip install -r requirements.txt
+            pip install safety
+            safety check
+          fi
+
+      - name: Apply Node.js updates and audit
+        if: needs.update-node.result == 'success'
+        run: |
+          cd frontend
+          if [ -f "../node-updates/package.json" ] && [ -f "../node-updates/package-lock.json" ]; then
+            cp ../node-updates/package.json .
+            cp ../node-updates/package-lock.json .
+            npm ci
+            npm audit --audit-level moderate
+          fi
+
+  # Create pull request with updates
+  create-update-pr:
+    name: Create Update Pull Request
+    runs-on: ubuntu-latest
+    needs: [check-updates, update-python, update-node, security-audit]
+    if: always() && needs.check-updates.outputs.has-updates == 'true' && (github.event.inputs.create_pr != 'false')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download all update artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Apply updates to repository
+        run: |
+          # Apply Python updates
+          if [ -f "python-updates/requirements.txt" ]; then
+            cp python-updates/requirements.txt backend/
+            echo "✅ Applied Python dependency updates"
+          fi
+          
+          # Apply Node.js updates
+          if [ -f "node-updates/package.json" ] && [ -f "node-updates/package-lock.json" ]; then
+            cp node-updates/package.json frontend/
+            cp node-updates/package-lock.json frontend/
+            echo "✅ Applied Node.js dependency updates"
+          fi
+
+      - name: Create comprehensive update summary
+        run: |
+          echo "# 📦 Weekly Dependency Update" > UPDATE_SUMMARY.md
+          echo "Automated dependency update for $(date +'%Y-%m-%d')" >> UPDATE_SUMMARY.md
+          echo "" >> UPDATE_SUMMARY.md
+          
+          echo "## 🔍 Update Summary" >> UPDATE_SUMMARY.md
+          echo "- **Python packages**: ${{ needs.check-updates.outputs.python-updates }} updates available" >> UPDATE_SUMMARY.md
+          echo "- **Node.js packages**: ${{ needs.check-updates.outputs.node-updates }} updates available" >> UPDATE_SUMMARY.md
+          echo "- **Update type**: ${{ github.event.inputs.update_type || 'minor' }}" >> UPDATE_SUMMARY.md
+          echo "" >> UPDATE_SUMMARY.md
+          
+          if [ -f "python-updates/python-update-summary.md" ]; then
+            echo "## 🐍 Python Updates" >> UPDATE_SUMMARY.md
+            cat python-updates/python-update-summary.md >> UPDATE_SUMMARY.md
+            echo "" >> UPDATE_SUMMARY.md
+          fi
+          
+          if [ -f "node-updates/node-update-summary.md" ]; then
+            echo "## 📱 Node.js Updates" >> UPDATE_SUMMARY.md
+            cat node-updates/node-update-summary.md >> UPDATE_SUMMARY.md
+            echo "" >> UPDATE_SUMMARY.md
+          fi
+          
+          echo "## ✅ Testing Status" >> UPDATE_SUMMARY.md
+          echo "- **Python tests**: ${{ needs.update-python.result }}" >> UPDATE_SUMMARY.md
+          echo "- **Node.js tests**: ${{ needs.update-node.result }}" >> UPDATE_SUMMARY.md
+          echo "- **Security audit**: ${{ needs.security-audit.result }}" >> UPDATE_SUMMARY.md
+          echo "" >> UPDATE_SUMMARY.md
+          
+          echo "## 🚀 Next Steps" >> UPDATE_SUMMARY.md
+          echo "1. Review the changes in this PR" >> UPDATE_SUMMARY.md
+          echo "2. Run full test suite locally if needed" >> UPDATE_SUMMARY.md
+          echo "3. Merge if all checks pass" >> UPDATE_SUMMARY.md
+          echo "4. Monitor deployment for any issues" >> UPDATE_SUMMARY.md
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            📦 Weekly dependency update (${{ github.event.inputs.update_type || 'minor' }})
+            
+            - Python packages: ${{ needs.check-updates.outputs.python-updates }} updates
+            - Node.js packages: ${{ needs.check-updates.outputs.node-updates }} updates
+            - Update type: ${{ github.event.inputs.update_type || 'minor' }}
+          title: '📦 Weekly Dependency Update - ${{ github.event.inputs.update_type || 'minor' }} (${{ github.run_number }})'
+          body-path: UPDATE_SUMMARY.md
+          branch: dependency-update-${{ github.run_number }}
+          delete-branch: true
+          labels: |
+            dependencies
+            automated
+          assignees: ${{ github.repository_owner }}
+
+  # Notify about update results
+  notify:
+    name: Notify Update Results
+    runs-on: ubuntu-latest
+    needs: [check-updates, create-update-pr]
+    if: always()
+
+    steps:
+      - name: Notify about updates
+        run: |
+          if [ "${{ needs.check-updates.outputs.has-updates }}" == "true" ]; then
+            echo "📦 Dependency updates processed:"
+            echo "- Python: ${{ needs.check-updates.outputs.python-updates }} packages"
+            echo "- Node.js: ${{ needs.check-updates.outputs.node-updates }} packages"
+            echo "- PR Status: ${{ needs.create-update-pr.result }}"
+          else
+            echo "✅ All dependencies are up to date!"
+          fi
+
+      - name: Slack notification (if configured)
+        if: false # Enable if Slack webhook is configured
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: `📦 Dependency Update Status`,
+              attachments: [{
+                color: '${{ needs.check-updates.outputs.has-updates }}' === 'true' ? 'warning' : 'good',
+                fields: [{
+                  title: 'Updates Available',
+                  value: '${{ needs.check-updates.outputs.has-updates }}' === 'true' ? 'Yes' : 'No',
+                  short: true
+                }, {
+                  title: 'PR Created',
+                  value: '${{ needs.create-update-pr.result }}',
+                  short: true
+                }]
+              }]
+            }
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}

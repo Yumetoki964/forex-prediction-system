@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>バックテスト検証 - ForexPrediction</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #1a1f2e;
+            color: #ffffff;
+            min-height: 100vh;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #00d4ff;
+            padding-bottom: 15px;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .nav-breadcrumb {
+            color: #8892b0;
+            font-size: 12px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+            height: calc(100vh - 120px);
+        }
+
+        .sidebar {
+            background-color: #0f1419;
+            border: 1px solid #2a2f3a;
+            padding: 20px;
+            border-radius: 4px;
+            overflow-y: auto;
+        }
+
+        .content {
+            display: grid;
+            grid-template-rows: 400px 1fr;
+            gap: 20px;
+        }
+
+        .chart-section {
+            background-color: #0f1419;
+            border: 1px solid #2a2f3a;
+            padding: 20px;
+            border-radius: 4px;
+        }
+
+        .bottom-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .metrics-panel, .history-panel {
+            background-color: #0f1419;
+            border: 1px solid #2a2f3a;
+            padding: 20px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00d4ff;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #2a2f3a;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            color: #8892b0;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 8px 12px;
+            background-color: #1a1f2e;
+            border: 1px solid #2a2f3a;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border-radius: 2px;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 0 1px #00d4ff;
+        }
+
+        .radio-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .radio-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background-color: #1a1f2e;
+            border: 1px solid #2a2f3a;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .radio-item:hover {
+            border-color: #00d4ff;
+        }
+
+        .radio-item.selected {
+            border-color: #00d4ff;
+            background-color: rgba(0, 212, 255, 0.1);
+        }
+
+        .radio-item input[type="radio"] {
+            margin-right: 8px;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background-color: #00d4ff;
+            color: #1a1f2e;
+            border: none;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 14px;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 20px;
+        }
+
+        .btn-primary:hover {
+            background-color: #00b8e6;
+        }
+
+        .btn-primary:disabled {
+            background-color: #2a2f3a;
+            color: #64748b;
+            cursor: not-allowed;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background-color: #2a2f3a;
+            border-radius: 2px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #00d4ff;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .chart-placeholder {
+            width: 100%;
+            height: 320px;
+            background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+            border: 1px dashed #2a2f3a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            position: relative;
+        }
+
+        .mock-chart {
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"><path d="M0,180 Q100,160 200,140 T400,100" stroke="%2300d4ff" stroke-width="2" fill="none"/><path d="M0,190 Q100,170 200,150 T400,110 L400,200 L0,200 Z" fill="%2300d4ff" fill-opacity="0.1"/></svg>') no-repeat center;
+            background-size: contain;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background-color: #1a1f2e;
+            padding: 15px;
+            border: 1px solid #2a2f3a;
+            border-radius: 2px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .metric-value.negative {
+            color: #ff4757;
+        }
+
+        .metric-value.positive {
+            color: #2ed573;
+        }
+
+        .accuracy-trend {
+            height: 100px;
+            background: linear-gradient(90deg, #1a1f2e 0%, #0f1419 100%);
+            border: 1px solid #2a2f3a;
+            border-radius: 2px;
+            position: relative;
+            margin-top: 10px;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .history-table th {
+            background-color: #1a1f2e;
+            padding: 8px 6px;
+            border: 1px solid #2a2f3a;
+            color: #8892b0;
+            font-weight: bold;
+            text-align: left;
+        }
+
+        .history-table td {
+            padding: 6px;
+            border: 1px solid #2a2f3a;
+            color: #ffffff;
+        }
+
+        .history-table tbody tr:hover {
+            background-color: rgba(0, 212, 255, 0.05);
+        }
+
+        .trade-profit {
+            color: #2ed573;
+        }
+
+        .trade-loss {
+            color: #ff4757;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-running {
+            background-color: #00d4ff;
+            animation: pulse 2s infinite;
+        }
+
+        .status-completed {
+            background-color: #2ed573;
+        }
+
+        .status-idle {
+            background-color: #64748b;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .alert {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 2px;
+            font-size: 12px;
+        }
+
+        .alert-info {
+            background-color: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            color: #00d4ff;
+        }
+    </style>
+</head>
+<body>
+    <!--
+    【CF_06引き継ぎ情報】
+    UI要件: バックテスト実行とパフォーマンス分析画面
+    必要API: 
+    - POST /api/backtest/execute - バックテスト実行
+    - GET /api/backtest/status/{test_id} - 実行状況取得
+    - GET /api/backtest/results/{test_id} - 結果取得
+    - GET /api/backtest/trades/{test_id} - 取引履歴取得
+    入力データ: { 
+        period: string, // "1Y", "3Y", "5Y", "10Y"
+        initial_capital: number,
+        risk_per_trade: number,
+        stop_loss_pips: number
+    }
+    出力データ: { 
+        test_id: string,
+        status: string, // "running", "completed", "failed"
+        progress: number, // 0-100
+        results: {
+            total_return: number,
+            max_drawdown: number,
+            sharpe_ratio: number,
+            win_rate: number,
+            accuracy_trend: number[],
+            profit_curve: number[]
+        },
+        trades: Array<{
+            date: string,
+            pair: string,
+            direction: string,
+            entry_price: number,
+            exit_price: number,
+            profit_loss: number,
+            accuracy: number
+        }>
+    }
+    UI文脈: リアルタイム進捗更新、非同期データ取得、結果可視化
+    特記事項: WebSocket接続による進捗リアルタイム更新、Chart.js使用推奨
+    -->
+    
+    <div class="container">
+        <div class="header">
+            <h1 class="title">バックテスト検証</h1>
+            <div class="nav-breadcrumb">
+                ホーム > 分析ツール > バックテスト検証
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <!-- サイドバー: バックテスト設定 -->
+            <div class="sidebar">
+                <div class="section-title">バックテスト設定</div>
+                
+                <div class="form-group">
+                    <label class="form-label">検証期間</label>
+                    <div class="radio-group">
+                        <div class="radio-item selected" onclick="selectPeriod('1Y')">
+                            <input type="radio" name="period" value="1Y" checked>
+                            <span>1年</span>
+                        </div>
+                        <div class="radio-item" onclick="selectPeriod('3Y')">
+                            <input type="radio" name="period" value="3Y">
+                            <span>3年</span>
+                        </div>
+                        <div class="radio-item" onclick="selectPeriod('5Y')">
+                            <input type="radio" name="period" value="5Y">
+                            <span>5年</span>
+                        </div>
+                        <div class="radio-item" onclick="selectPeriod('10Y')">
+                            <input type="radio" name="period" value="10Y">
+                            <span>10年</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">初期資金 (USD)</label>
+                    <input type="number" class="form-input" id="initial_capital" value="10000" min="1000" step="1000">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">1取引リスク (%)</label>
+                    <input type="number" class="form-input" id="risk_per_trade" value="2" min="0.5" max="10" step="0.5">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">ストップロス (pips)</label>
+                    <input type="number" class="form-input" id="stop_loss_pips" value="20" min="5" max="100" step="5">
+                </div>
+
+                <button class="btn-primary" id="execute_btn" onclick="startBacktest()">
+                    <span class="status-indicator status-idle" id="status_indicator"></span>
+                    バックテスト実行
+                </button>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress_fill"></div>
+                </div>
+
+                <div class="alert alert-info">
+                    <strong>注意:</strong> 大規模データの検証には数分かかる場合があります。
+                </div>
+            </div>
+
+            <!-- メインコンテンツ -->
+            <div class="content">
+                <!-- 収益曲線グラフ -->
+                <div class="chart-section">
+                    <div class="section-title">収益曲線</div>
+                    <div class="chart-placeholder">
+                        <div class="mock-chart" id="profit_chart"></div>
+                    </div>
+                </div>
+
+                <div class="bottom-section">
+                    <!-- パフォーマンス指標 -->
+                    <div class="metrics-panel">
+                        <div class="section-title">パフォーマンス指標</div>
+                        
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <div class="metric-label">総収益率</div>
+                                <div class="metric-value positive" id="total_return">---%</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">最大ドローダウン</div>
+                                <div class="metric-value negative" id="max_drawdown">---%</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">シャープレシオ</div>
+                                <div class="metric-value" id="sharpe_ratio">---</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">勝率</div>
+                                <div class="metric-value" id="win_rate">---%</div>
+                            </div>
+                        </div>
+
+                        <div class="section-title" style="margin-top: 20px;">予測的中率推移</div>
+                        <div class="accuracy-trend" id="accuracy_trend">
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #64748b; font-size: 12px;">
+                                データを取得中...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 仮想取引履歴 -->
+                    <div class="history-panel">
+                        <div class="section-title">仮想取引履歴</div>
+                        
+                        <div style="height: 400px; overflow-y: auto;">
+                            <table class="history-table">
+                                <thead>
+                                    <tr>
+                                        <th>日時</th>
+                                        <th>通貨ペア</th>
+                                        <th>売買</th>
+                                        <th>エントリー</th>
+                                        <th>エグジット</th>
+                                        <th>損益</th>
+                                        <th>的中率</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="trades_tbody">
+                                    <tr>
+                                        <td colspan="7" style="text-align: center; padding: 20px; color: #64748b;">
+                                            バックテストを実行して取引履歴を表示
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTest = null;
+        let isRunning = false;
+
+        function selectPeriod(period) {
+            // ラジオボタンの選択状態を更新
+            document.querySelectorAll('.radio-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            
+            // 実際のラジオボタンもチェック
+            document.querySelector(`input[value="${period}"]`).checked = true;
+        }
+
+        function startBacktest() {
+            if (isRunning) return;
+            
+            const settings = {
+                period: document.querySelector('input[name="period"]:checked').value,
+                initial_capital: parseFloat(document.getElementById('initial_capital').value),
+                risk_per_trade: parseFloat(document.getElementById('risk_per_trade').value),
+                stop_loss_pips: parseInt(document.getElementById('stop_loss_pips').value)
+            };
+
+            // UI状態を実行中に変更
+            isRunning = true;
+            const executeBtn = document.getElementById('execute_btn');
+            const statusIndicator = document.getElementById('status_indicator');
+            
+            executeBtn.innerHTML = '<span class="status-indicator status-running"></span>実行中...';
+            executeBtn.disabled = true;
+            statusIndicator.className = 'status-indicator status-running';
+
+            // プログレスバーのアニメーション開始
+            simulateProgress();
+
+            // 実際のAPI呼び出し（モック）
+            setTimeout(() => {
+                completeBacktest();
+            }, 5000);
+        }
+
+        function simulateProgress() {
+            const progressFill = document.getElementById('progress_fill');
+            let progress = 0;
+            
+            const interval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                }
+                progressFill.style.width = `${progress}%`;
+            }, 200);
+        }
+
+        function completeBacktest() {
+            // UI状態を完了に変更
+            isRunning = false;
+            const executeBtn = document.getElementById('execute_btn');
+            const statusIndicator = document.getElementById('status_indicator');
+            
+            executeBtn.innerHTML = '<span class="status-indicator status-completed"></span>バックテスト実行';
+            executeBtn.disabled = false;
+            statusIndicator.className = 'status-indicator status-completed';
+
+            // モックデータを表示
+            updateResults({
+                total_return: 15.7,
+                max_drawdown: -8.3,
+                sharpe_ratio: 1.42,
+                win_rate: 67.8
+            });
+
+            updateTrades([
+                { date: '2024-01-15', pair: 'USD/JPY', direction: 'BUY', entry: 149.25, exit: 150.40, pl: 115, accuracy: 85 },
+                { date: '2024-01-14', pair: 'EUR/USD', direction: 'SELL', entry: 1.0875, exit: 1.0820, pl: 55, accuracy: 78 },
+                { date: '2024-01-12', pair: 'GBP/USD', direction: 'BUY', entry: 1.2650, exit: 1.2595, pl: -55, accuracy: 42 },
+                { date: '2024-01-11', pair: 'USD/JPY', direction: 'SELL', entry: 148.90, exit: 148.20, pl: 70, accuracy: 91 },
+                { date: '2024-01-10', pair: 'AUD/USD', direction: 'BUY', entry: 0.6720, exit: 0.6785, pl: 65, accuracy: 89 }
+            ]);
+        }
+
+        function updateResults(results) {
+            document.getElementById('total_return').textContent = `+${results.total_return}%`;
+            document.getElementById('max_drawdown').textContent = `${results.max_drawdown}%`;
+            document.getElementById('sharpe_ratio').textContent = results.sharpe_ratio.toFixed(2);
+            document.getElementById('win_rate').textContent = `${results.win_rate}%`;
+        }
+
+        function updateTrades(trades) {
+            const tbody = document.getElementById('trades_tbody');
+            tbody.innerHTML = trades.map(trade => `
+                <tr>
+                    <td>${trade.date}</td>
+                    <td>${trade.pair}</td>
+                    <td>${trade.direction}</td>
+                    <td>${trade.entry.toFixed(2)}</td>
+                    <td>${trade.exit.toFixed(2)}</td>
+                    <td class="${trade.pl >= 0 ? 'trade-profit' : 'trade-loss'}">${trade.pl >= 0 ? '+' : ''}${trade.pl}</td>
+                    <td>${trade.accuracy}%</td>
+                </tr>
+            `).join('');
+        }
+
+        // ページ読み込み時の初期化
+        window.addEventListener('load', function() {
+            console.log('バックテスト検証ページが読み込まれました');
+        });
+    </script>
+</body>
+</html>

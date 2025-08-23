@@ -1,0 +1,57 @@
+# Production environment overrides
+version: '3.8'
+
+services:
+  backend:
+    environment:
+      - DEBUG=False
+      - LOG_LEVEL=ERROR
+      - ENVIRONMENT=production
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+      replicas: 2
+    restart: always
+
+  frontend:
+    environment:
+      - NODE_ENV=production
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+      replicas: 2
+    restart: always
+
+  postgres:
+    environment:
+      POSTGRES_DB: forex_prediction_production
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+    restart: always
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    restart: always
+    volumes:
+      - redis_prod_data:/data
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:

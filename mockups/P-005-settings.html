@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>予測設定 - Forex Prediction System</title>
+    <style>
+        /* ============================================
+         * Forex Prediction System - Design System
+         * Bloomberg Terminal風ダークモード
+         * ============================================ */
+
+        /* CSS変数定義 */
+        :root {
+            /* カラーパレット */
+            --primary: #00d4ff;
+            --primary-dark: #0099cc;
+            --primary-light: #33ddff;
+            --secondary: #1a1f2e;
+            --secondary-light: #2d3748;
+            --secondary-lighter: #4a5568;
+            
+            /* 背景色 */
+            --background: #0f1419;
+            --surface: #1a1f2e;
+            --surface-elevated: #2d3748;
+            --border: #4a5568;
+            --divider: #2d3748;
+            
+            /* セマンティック */
+            --success: #00ff88;
+            --success-bg: rgba(0, 255, 136, 0.1);
+            --warning: #fbbf24;
+            --warning-bg: rgba(251, 191, 36, 0.1);
+            --error: #ef4444;
+            --error-bg: rgba(239, 68, 68, 0.1);
+            --text-primary: #e6e8eb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            
+            /* タイポグラフィ */
+            --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            --font-numeric: 'Courier New', 'SF Mono', Monaco, Menlo, 'Consolas', monospace;
+            
+            /* フォントサイズ */
+            --text-xs: 0.75rem;
+            --text-sm: 0.875rem;
+            --text-base: 1rem;
+            --text-lg: 1.125rem;
+            --text-xl: 1.25rem;
+            --text-2xl: 1.5rem;
+            --text-3xl: 2rem;
+            
+            /* スペーシング */
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --spacing-2xl: 3rem;
+            
+            /* フォントウェイト */
+            --font-normal: 400;
+            --font-medium: 500;
+            --font-semibold: 600;
+            --font-bold: 700;
+            
+            /* トランジション */
+            --transition-fast: 0.15s ease-out;
+            --transition-base: 0.3s ease-out;
+            --transition-slow: 0.5s ease-out;
+        }
+
+        /* 基本設定 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-primary);
+            background: var(--background);
+            color: var(--text-primary);
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* レイアウト */
+        .main-layout {
+            display: flex;
+            min-height: 100vh;
+            background: var(--background);
+        }
+
+        .sidebar {
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            width: 280px;
+            height: 100vh;
+            padding: var(--spacing-lg);
+            overflow-y: auto;
+        }
+
+        .content-area {
+            flex: 1;
+            padding: var(--spacing-xl);
+            overflow: auto;
+        }
+
+        /* ナビゲーション */
+        .nav-brand {
+            color: var(--primary);
+            font-size: var(--text-lg);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--spacing-xl);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .menu-section {
+            color: var(--text-muted);
+            font-size: var(--text-xs);
+            font-weight: var(--font-semibold);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: var(--spacing-lg) var(--spacing-md) var(--spacing-sm);
+        }
+
+        .menu-item {
+            color: var(--text-secondary);
+            padding: var(--spacing-sm) var(--spacing-md);
+            margin-bottom: var(--spacing-xs);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            text-decoration: none;
+        }
+
+        .menu-item:hover {
+            color: var(--text-primary);
+            background: var(--surface-elevated);
+        }
+
+        .menu-item.active {
+            color: var(--primary);
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 3px solid var(--primary);
+        }
+
+        .menu-icon {
+            font-size: 18px;
+            opacity: 0.7;
+        }
+
+        /* カード */
+        .card {
+            background: linear-gradient(135deg, var(--surface-elevated), var(--border));
+            border-radius: 12px;
+            padding: var(--spacing-xl);
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            margin-bottom: var(--spacing-lg);
+            transition: all var(--transition-base);
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-header {
+            color: var(--primary);
+            font-size: var(--text-lg);
+            font-weight: var(--font-semibold);
+            margin-bottom: var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: var(--spacing-md);
+        }
+
+        .card-description {
+            color: var(--text-secondary);
+            font-size: var(--text-sm);
+            margin-bottom: var(--spacing-lg);
+            line-height: 1.6;
+        }
+
+        /* フォーム要素 */
+        .form-group {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .form-label {
+            display: block;
+            color: var(--text-primary);
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .form-input {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: var(--spacing-md);
+            color: var(--text-primary);
+            font-family: var(--font-primary);
+            font-size: var(--text-base);
+            transition: all var(--transition-base);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
+        }
+
+        .form-select {
+            background: var(--surface) url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e") no-repeat right var(--spacing-md) center;
+            background-size: 1em 1em;
+            appearance: none;
+            padding-right: calc(var(--spacing-xl) + 1em);
+        }
+
+        /* スライダー */
+        .range-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            outline: none;
+            margin: var(--spacing-md) 0;
+        }
+
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+        }
+
+        .range-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            border: none;
+        }
+
+        /* ラジオボタン・チェックボックス */
+        .radio-group,
+        .checkbox-group {
+            display: flex;
+            gap: var(--spacing-lg);
+            margin-top: var(--spacing-sm);
+        }
+
+        .radio-item,
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            cursor: pointer;
+        }
+
+        .radio-item input[type="radio"],
+        .checkbox-item input[type="checkbox"] {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            border-radius: 4px;
+        }
+
+        .radio-item input[type="radio"]:checked::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--primary);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .checkbox-item input[type="checkbox"]:checked::after {
+            content: '✓';
+            color: var(--primary);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* ボタン */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--background);
+            border: none;
+            border-radius: 8px;
+            padding: var(--spacing-md) var(--spacing-xl);
+            font-family: var(--font-primary);
+            font-weight: var(--font-semibold);
+            font-size: var(--text-base);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--surface-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: var(--spacing-md) var(--spacing-xl);
+            font-family: var(--font-primary);
+            font-weight: var(--font-medium);
+            font-size: var(--text-base);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+            border-color: var(--primary);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+        }
+
+        /* アラート */
+        .alert {
+            border-radius: 8px;
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+            font-size: var(--text-sm);
+            border-left: 4px solid;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: var(--success-bg);
+            border-left-color: var(--success);
+            color: var(--success);
+        }
+
+        .alert-warning {
+            background: var(--warning-bg);
+            border-left-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .alert-error {
+            background: var(--error-bg);
+            border-left-color: var(--error);
+            color: var(--error);
+        }
+
+        /* ページタイトル */
+        .page-header {
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .page-title {
+            font-size: var(--text-3xl);
+            font-weight: var(--font-bold);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .page-subtitle {
+            font-size: var(--text-base);
+            color: var(--text-secondary);
+        }
+
+        /* レスポンシブ */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                z-index: 1000;
+                transition: left var(--transition-base);
+            }
+            
+            .sidebar.open {
+                left: 0;
+            }
+            
+            .content-area {
+                padding: var(--spacing-lg);
+            }
+            
+            .page-title {
+                font-size: var(--text-2xl);
+            }
+        }
+
+        /* モデル設定の説明ボックス */
+        .model-explanation {
+            background: rgba(0, 212, 255, 0.05);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 8px;
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .model-explanation h4 {
+            color: var(--primary);
+            font-size: var(--text-sm);
+            font-weight: var(--font-semibold);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .model-explanation p {
+            color: var(--text-secondary);
+            font-size: var(--text-sm);
+            line-height: 1.6;
+        }
+
+        /* 感度設定の視覚表示 */
+        .sensitivity-indicators {
+            display: flex;
+            justify-content: space-between;
+            margin-top: var(--spacing-sm);
+            font-size: var(--text-xs);
+            color: var(--text-muted);
+        }
+
+        /* アラート設定の項目 */
+        .alert-setting-group {
+            background: var(--surface);
+            border-radius: 8px;
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+            border: 1px solid var(--border);
+        }
+
+        .alert-setting-title {
+            font-weight: var(--font-medium);
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        /* 優先度バッジ */
+        .priority-badge {
+            display: inline-block;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: 4px;
+            font-size: var(--text-xs);
+            font-weight: var(--font-medium);
+            margin-left: var(--spacing-sm);
+        }
+
+        .priority-high {
+            background: var(--error-bg);
+            color: var(--error);
+        }
+
+        .priority-medium {
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+
+        .priority-low {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+    </style>
+</head>
+<body>
+    <!--
+    【CF_06引き継ぎ情報】
+    UI要件: 予測モデル設定、感度調整、アラート設定の統合管理画面
+    必要API: GET /api/settings/prediction - 現在の予測設定取得
+    必要API: PUT /api/settings/prediction - 予測設定更新
+    必要API: GET /api/settings/alerts - アラート設定取得
+    必要API: PUT /api/settings/alerts - アラート設定更新
+    必要API: POST /api/settings/test - 設定テスト実行
+    入力データ: {
+        "prediction_settings": {
+            "model_weights": {"lstm": number, "xgboost": number},
+            "sensitivity": "conservative|standard|aggressive",
+            "custom_parameters": object
+        },
+        "alert_settings": {
+            "email_notifications": boolean,
+            "browser_notifications": boolean,
+            "conditions": [{
+                "type": string,
+                "threshold": number,
+                "priority": "high|medium|low"
+            }]
+        }
+    }
+    出力データ: {
+        "success": boolean,
+        "message": string,
+        "test_results": {
+            "prediction_accuracy": number,
+            "confidence_score": number
+        }
+    }
+    UI文脈: 設定変更後は即座に保存、テスト実行で結果をプレビュー表示
+    特記事項: アンサンブルモデル比重の合計は100%、設定テストは非同期処理で結果通知
+    -->
+
+    <div class="main-layout">
+        <!-- サイドバー -->
+        <aside class="sidebar">
+            <div class="nav-brand">
+                <span style="font-size: 24px;">📊</span>
+                Forex Prediction
+            </div>
+            <ul class="sidebar-menu">
+                <li class="menu-section">メイン機能</li>
+                <li><a href="#" class="menu-item">
+                    <span class="menu-icon">📊</span>
+                    予測ダッシュボード
+                </a></li>
+                <li><a href="#" class="menu-item">
+                    <span class="menu-icon">📈</span>
+                    詳細予測分析
+                </a></li>
+                <li><a href="#" class="menu-item">
+                    <span class="menu-icon">🔍</span>
+                    バックテスト検証
+                </a></li>
+                
+                <li class="menu-section">管理機能</li>
+                <li><a href="#" class="menu-item">
+                    <span class="menu-icon">🗄️</span>
+                    データ管理
+                </a></li>
+                <li><a href="#" class="menu-item active">
+                    <span class="menu-icon">⚙️</span>
+                    予測設定
+                </a></li>
+                <li><a href="#" class="menu-item">
+                    <span class="menu-icon">🔗</span>
+                    データソース管理
+                </a></li>
+            </ul>
+        </aside>
+
+        <!-- メインコンテンツ -->
+        <main class="content-area">
+            <!-- ページヘッダー -->
+            <div class="page-header">
+                <h1 class="page-title">予測設定</h1>
+                <p class="page-subtitle">予測モデルのパラメーター調整とアラート設定を管理</p>
+            </div>
+
+            <!-- アラート表示エリア -->
+            <div id="alert-success" class="alert alert-success">
+                <strong>成功!</strong> 設定が正常に保存されました。
+            </div>
+            <div id="alert-error" class="alert alert-error">
+                <strong>エラー!</strong> 設定の保存に失敗しました。
+            </div>
+
+            <!-- 予測モデル設定 -->
+            <div class="card">
+                <div class="card-header">
+                    <span>🤖</span>
+                    予測モデル設定
+                </div>
+                <div class="card-description">
+                    アンサンブルモデルの比重を調整して予測精度を最適化します
+                </div>
+
+                <div class="model-explanation">
+                    <h4>アンサンブルモデルについて</h4>
+                    <p>LSTM（長短期記憶）ニューラルネットワークとXGBoost（勾配ブースティング）を組み合わせたアンサンブルモデルを使用しています。LSTMは時系列パターンの学習に優れ、XGBoostは非線形関係の捉え方に長けているため、両者の強みを活かした高精度な予測が可能です。</p>
+                </div>
+
+                <form id="prediction-form">
+                    <div class="form-group">
+                        <label class="form-label">LSTMモデル比重</label>
+                        <input type="range" id="lstm-weight" class="range-slider" min="0" max="100" value="60">
+                        <div class="sensitivity-indicators">
+                            <span>0%</span>
+                            <span id="lstm-value">60%</span>
+                            <span>100%</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">XGBoostモデル比重</label>
+                        <input type="range" id="xgboost-weight" class="range-slider" min="0" max="100" value="40">
+                        <div class="sensitivity-indicators">
+                            <span>0%</span>
+                            <span id="xgboost-value">40%</span>
+                            <span>100%</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="sensitivity">予測感度</label>
+                        <select id="sensitivity" class="form-input form-select">
+                            <option value="conservative">保守的 - 確実性を重視した予測</option>
+                            <option value="standard" selected>標準 - バランスの取れた予測</option>
+                            <option value="aggressive">積極的 - 変動を敏感に捉える予測</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+
+            <!-- アラート設定 -->
+            <div class="card">
+                <div class="card-header">
+                    <span>🚨</span>
+                    アラート設定
+                </div>
+                <div class="card-description">
+                    重要な変動予測時の通知方法と条件を設定します
+                </div>
+
+                <form id="alert-form">
+                    <!-- 通知方法 -->
+                    <div class="form-group">
+                        <label class="form-label">通知方法</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="email-notifications" checked>
+                                <span>メール通知</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="browser-notifications" checked>
+                                <span>ブラウザ通知</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- アラート条件設定 -->
+                    <div class="alert-setting-group">
+                        <div class="alert-setting-title">価格変動アラート</div>
+                        <div class="form-group">
+                            <label class="form-label">変動閾値（％）</label>
+                            <input type="number" class="form-input" value="2.5" min="0.1" max="10" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">優先度</label>
+                            <div class="radio-group">
+                                <label class="radio-item">
+                                    <input type="radio" name="price-priority" value="high">
+                                    <span>高<span class="priority-badge priority-high">HIGH</span></span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="price-priority" value="medium" checked>
+                                    <span>中<span class="priority-badge priority-medium">MED</span></span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="price-priority" value="low">
+                                    <span>低<span class="priority-badge priority-low">LOW</span></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert-setting-group">
+                        <div class="alert-setting-title">予測精度アラート</div>
+                        <div class="form-group">
+                            <label class="form-label">精度閾値（％）</label>
+                            <input type="number" class="form-input" value="85" min="50" max="99" step="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">優先度</label>
+                            <div class="radio-group">
+                                <label class="radio-item">
+                                    <input type="radio" name="accuracy-priority" value="high" checked>
+                                    <span>高<span class="priority-badge priority-high">HIGH</span></span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="accuracy-priority" value="medium">
+                                    <span>中<span class="priority-badge priority-medium">MED</span></span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="accuracy-priority" value="low">
+                                    <span>低<span class="priority-badge priority-low">LOW</span></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert-setting-group">
+                        <div class="alert-setting-title">リスク指標アラート</div>
+                        <div class="form-group">
+                            <label class="form-label">ボラティリティ閾値</label>
+                            <input type="number" class="form-input" value="1.5" min="0.1" max="5" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">優先度</label>
+                            <div class="radio-group">
+                                <label class="radio-item">
+                                    <input type="radio" name="risk-priority" value="high">
+                                    <span>高<span class="priority-badge priority-high">HIGH</span></span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="risk-priority" value="medium" checked>
+                                    <span>中<span class="priority-badge priority-medium">MED</span></span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="risk-priority" value="low">
+                                    <span>低<span class="priority-badge priority-low">LOW</span></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 操作ボタン -->
+            <div class="card">
+                <div class="card-header">
+                    <span>🛠️</span>
+                    操作
+                </div>
+                <div class="card-description">
+                    設定のテスト実行、保存、リセットを行います
+                </div>
+
+                <div class="btn-group">
+                    <button id="test-settings" class="btn-secondary">
+                        <span>🧪</span>
+                        設定テスト実行
+                    </button>
+                    <button id="save-settings" class="btn-primary">
+                        <span>💾</span>
+                        設定を保存
+                    </button>
+                    <button id="reset-settings" class="btn-secondary">
+                        <span>🔄</span>
+                        デフォルトにリセット
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // DOM要素の取得
+        const lstmWeight = document.getElementById('lstm-weight');
+        const xgboostWeight = document.getElementById('xgboost-weight');
+        const lstmValue = document.getElementById('lstm-value');
+        const xgboostValue = document.getElementById('xgboost-value');
+        const testBtn = document.getElementById('test-settings');
+        const saveBtn = document.getElementById('save-settings');
+        const resetBtn = document.getElementById('reset-settings');
+        const alertSuccess = document.getElementById('alert-success');
+        const alertError = document.getElementById('alert-error');
+
+        // モデル比重の相互調整
+        lstmWeight.addEventListener('input', function() {
+            const lstm = parseInt(this.value);
+            const xgboost = 100 - lstm;
+            xgboostWeight.value = xgboost;
+            lstmValue.textContent = lstm + '%';
+            xgboostValue.textContent = xgboost + '%';
+        });
+
+        xgboostWeight.addEventListener('input', function() {
+            const xgboost = parseInt(this.value);
+            const lstm = 100 - xgboost;
+            lstmWeight.value = lstm;
+            lstmValue.textContent = lstm + '%';
+            xgboostValue.textContent = xgboost + '%';
+        });
+
+        // アラート表示関数
+        function showAlert(type, duration = 3000) {
+            const alert = type === 'success' ? alertSuccess : alertError;
+            alert.classList.add('show');
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, duration);
+        }
+
+        // 設定テスト実行
+        testBtn.addEventListener('click', async function() {
+            this.disabled = true;
+            this.innerHTML = '<span>⏳</span> テスト実行中...';
+
+            try {
+                // 実際の実装では /api/settings/test にPOSTリクエスト
+                await new Promise(resolve => setTimeout(resolve, 2000)); // モック待機
+                
+                // テスト結果の表示（実際の実装では API レスポンスを使用）
+                const testResult = {
+                    prediction_accuracy: 87.3,
+                    confidence_score: 0.91
+                };
+
+                alert(`テスト完了！\n予測精度: ${testResult.prediction_accuracy}%\n信頼度スコア: ${testResult.confidence_score}`);
+                
+            } catch (error) {
+                showAlert('error');
+            } finally {
+                this.disabled = false;
+                this.innerHTML = '<span>🧪</span> 設定テスト実行';
+            }
+        });
+
+        // 設定保存
+        saveBtn.addEventListener('click', async function() {
+            this.disabled = true;
+            this.innerHTML = '<span>⏳</span> 保存中...';
+
+            try {
+                // 設定データの収集
+                const predictionSettings = {
+                    model_weights: {
+                        lstm: parseInt(lstmWeight.value) / 100,
+                        xgboost: parseInt(xgboostWeight.value) / 100
+                    },
+                    sensitivity: document.getElementById('sensitivity').value
+                };
+
+                const alertSettings = {
+                    email_notifications: document.getElementById('email-notifications').checked,
+                    browser_notifications: document.getElementById('browser-notifications').checked,
+                    conditions: [
+                        {
+                            type: 'price_change',
+                            threshold: parseFloat(document.querySelector('.alert-setting-group:nth-child(2) input[type="number"]').value),
+                            priority: document.querySelector('input[name="price-priority"]:checked').value
+                        },
+                        {
+                            type: 'prediction_accuracy',
+                            threshold: parseFloat(document.querySelector('.alert-setting-group:nth-child(3) input[type="number"]').value),
+                            priority: document.querySelector('input[name="accuracy-priority"]:checked').value
+                        },
+                        {
+                            type: 'risk_indicator',
+                            threshold: parseFloat(document.querySelector('.alert-setting-group:nth-child(4) input[type="number"]').value),
+                            priority: document.querySelector('input[name="risk-priority"]:checked').value
+                        }
+                    ]
+                };
+
+                // 実際の実装では以下のAPIリクエストを実行
+                // await fetch('/api/settings/prediction', { method: 'PUT', body: JSON.stringify(predictionSettings) });
+                // await fetch('/api/settings/alerts', { method: 'PUT', body: JSON.stringify(alertSettings) });
+
+                // モック成功レスポンス
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                showAlert('success');
+                
+            } catch (error) {
+                showAlert('error');
+            } finally {
+                this.disabled = false;
+                this.innerHTML = '<span>💾</span> 設定を保存';
+            }
+        });
+
+        // デフォルト設定リセット
+        resetBtn.addEventListener('click', function() {
+            if (confirm('設定をデフォルトに戻しますか？未保存の変更は失われます。')) {
+                // デフォルト値の復元
+                lstmWeight.value = 60;
+                xgboostWeight.value = 40;
+                lstmValue.textContent = '60%';
+                xgboostValue.textContent = '40%';
+                
+                document.getElementById('sensitivity').value = 'standard';
+                document.getElementById('email-notifications').checked = true;
+                document.getElementById('browser-notifications').checked = true;
+                
+                // アラート設定の初期化
+                document.querySelector('.alert-setting-group:nth-child(2) input[type="number"]').value = 2.5;
+                document.querySelector('.alert-setting-group:nth-child(3) input[type="number"]').value = 85;
+                document.querySelector('.alert-setting-group:nth-child(4) input[type="number"]').value = 1.5;
+                
+                // 優先度の初期化
+                document.querySelector('input[name="price-priority"][value="medium"]').checked = true;
+                document.querySelector('input[name="accuracy-priority"][value="high"]').checked = true;
+                document.querySelector('input[name="risk-priority"][value="medium"]').checked = true;
+                
+                alert('設定をデフォルトに戻しました');
+            }
+        });
+
+        // 初期化時の設定値読み込み（実際の実装では API から取得）
+        window.addEventListener('load', async function() {
+            try {
+                // 実際の実装では以下のAPIリクエストを実行
+                // const predictionSettings = await fetch('/api/settings/prediction').then(r => r.json());
+                // const alertSettings = await fetch('/api/settings/alerts').then(r => r.json());
+                
+                // モックデータでの初期化は既に HTML で設定済み
+                console.log('設定画面の初期化完了');
+                
+            } catch (error) {
+                console.error('設定の読み込みに失敗:', error);
+                showAlert('error');
+            }
+        });
+
+        // レスポンシブメニュー（モバイル対応）
+        const menuToggle = document.createElement('button');
+        menuToggle.innerHTML = '☰';
+        menuToggle.style.cssText = `
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            background: var(--primary);
+            color: var(--background);
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 18px;
+            cursor: pointer;
+        `;
+
+        document.body.appendChild(menuToggle);
+
+        menuToggle.addEventListener('click', function() {
+            document.querySelector('.sidebar').classList.toggle('open');
+        });
+
+        // モバイル表示の制御
+        function handleResize() {
+            if (window.innerWidth <= 768) {
+                menuToggle.style.display = 'block';
+            } else {
+                menuToggle.style.display = 'none';
+                document.querySelector('.sidebar').classList.remove('open');
+            }
+        }
+
+        window.addEventListener('resize', handleResize);
+        handleResize();
+    </script>
+</body>
+</html>

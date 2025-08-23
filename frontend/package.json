@@ -1,0 +1,47 @@
+{
+  "name": "forex-prediction-system-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+    "generate:api": "openapi-generator-cli generate -i http://localhost:8173/openapi.json -g typescript-axios -o ./src/generated --additional-properties=withSeparateModelsAndApi=true,modelPackage=models,apiPackage=api,withInterfaces=true,supportsES6=true"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^5.16.7",
+    "@mui/material": "^5.16.7",
+    "@rollup/rollup-darwin-arm64": "^4.48.0",
+    "@tanstack/react-query": "^5.51.21",
+    "apexcharts": "^5.3.4",
+    "axios": "^1.7.4",
+    "chart.js": "^4.5.0",
+    "react": "^18.3.1",
+    "react-apexcharts": "^1.7.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.1",
+    "vite-tsconfig-paths": "^5.1.4",
+    "zustand": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.7",
+    "@typescript-eslint/eslint-plugin": "^7.15.0",
+    "@typescript-eslint/parser": "^7.15.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-refresh": "^0.4.7",
+    "prettier": "^3.3.3",
+    "swagger-typescript-api": "^13.2.8",
+    "typescript": "^5.2.2",
+    "vite": "^5.4.19"
+  }
+}
