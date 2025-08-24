@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: forex-backend
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./forex.db}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost}
+    volumes:
+      - ./backend/data:/app/data
+    networks:
+      - forex-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        - VITE_API_URL=${VITE_API_URL:-/api}
+    container_name: forex-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - forex-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  forex-network:
+    driver: bridge
+
+volumes:
+  forex-data:
