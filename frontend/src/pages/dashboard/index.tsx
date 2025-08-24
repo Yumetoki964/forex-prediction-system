@@ -9,6 +9,7 @@ import { SignalCard } from './components/SignalCard';
 import { RiskMetricsCard } from './components/RiskMetricsCard';
 import { ModelInfoCard } from './components/ModelInfoCard';
 import { AlertsSection } from './components/AlertsSection';
+import { MLPredictionCard } from './components/MLPredictionCard';
 
 const DashboardPage: React.FC = () => {
   const dashboardData = useDashboardData();
@@ -94,6 +95,13 @@ const DashboardPage: React.FC = () => {
             loading={currentRate.isLoading}
             error={errors.currentRate}
           />
+        </Grid>
+      </Grid>
+
+      {/* AI予測セクション */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12}>
+          <MLPredictionCard currencyPair="USD/JPY" />
         </Grid>
       </Grid>
 

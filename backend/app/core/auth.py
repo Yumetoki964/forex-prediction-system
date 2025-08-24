@@ -63,7 +63,7 @@ def decode_access_token(token: str) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="トークンの有効期限が切れています",
         )
-    except jwt.JWTError:
+    except (jwt.InvalidSignatureError, jwt.DecodeError, Exception):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="無効なトークンです",

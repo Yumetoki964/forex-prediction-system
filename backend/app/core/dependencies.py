@@ -17,10 +17,18 @@ from .auth import decode_access_token, get_user_by_id, require_admin_role
 async def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     """
     現在ログイン中のユーザーを取得
-    HttpOnly Cookieからトークンを読み取り
+    HttpOnly CookieまたはAuthorizationヘッダーからトークンを読み取り
     """
-    # Cookieからトークン取得
-    token = request.cookies.get("access_token")
+    # まずAuthorizationヘッダーを確認（API利用）
+    auth_header = request.headers.get("Authorization")
+    token = None
+    
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:]  # "Bearer "の後の部分を取得
+    
+    # Authorizationヘッダーがない場合はCookieから取得（ブラウザ利用）
+    if not token:
+        token = request.cookies.get("access_token")
     
     if not token:
         raise HTTPException(

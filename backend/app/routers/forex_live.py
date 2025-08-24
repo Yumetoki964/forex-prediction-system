@@ -7,7 +7,7 @@ from typing import Dict, List
 from datetime import datetime
 
 from ..services.forex_scraper import ForexScraper
-from ..dependencies import get_current_user
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/forex", tags=["forex"])
 

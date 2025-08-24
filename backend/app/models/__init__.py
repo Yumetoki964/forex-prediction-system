@@ -58,6 +58,7 @@ class DataSourceType(PyEnum):
     YAHOO_FINANCE = "yahoo_finance"  # Yahoo Finance
     ALPHA_VANTAGE = "alpha_vantage"  # Alpha Vantage API
     SCRAPING = "scraping"         # Web scraping
+    YFINANCE = "yfinance"         # yfinance library
 
 class DataSourceStatus(PyEnum):
     ACTIVE = "active"
