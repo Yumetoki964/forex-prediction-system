@@ -4,7 +4,7 @@
 import axios from 'axios';
 
 // API基底URL
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // APIクライアントインスタンス
 export const apiClient = axios.create({

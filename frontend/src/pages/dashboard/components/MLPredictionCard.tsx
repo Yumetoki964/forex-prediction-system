@@ -99,7 +99,14 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
         setError('予測の取得に失敗しました');
       }
     } catch (err: any) {
-      setError(err.message || '予測の取得中にエラーが発生しました');
+      if (err.response?.status === 404) {
+        setError('ML予測機能は現在利用できません（無料プランでは制限されています）');
+      } else if (err.response?.status === 500) {
+        setError('サーバーエラーが発生しました。しばらく待ってから再試行してください。');
+      } else {
+        setError('予測機能は現在メンテナンス中です');
+      }
+      console.warn('ML prediction not available:', err.message);
     } finally {
       setLoading(false);
     }
@@ -172,7 +179,16 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
   };
 
   useEffect(() => {
-    fetchPredictions();
+    // ML機能が利用可能な場合のみ予測を取得
+    // 無料プランでは無効化されているため、エラーを回避
+    const checkAndFetchPredictions = async () => {
+      try {
+        await fetchPredictions();
+      } catch (error) {
+        console.log('ML predictions not available in free tier');
+      }
+    };
+    checkAndFetchPredictions();
   }, [currencyPair]);
 
   // シグナルの色を取得
@@ -262,8 +278,16 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
         </Box>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert 
+            severity={error.includes('無料プラン') ? "info" : "warning"} 
+            sx={{ mb: 2 }}
+          >
             {error}
+            {error.includes('無料プラン') && (
+              <Box sx={{ mt: 1, fontSize: '0.85rem' }}>
+                基本的な為替レート表示とチャート機能は利用可能です。
+              </Box>
+            )}
           </Alert>
         )}
 
