@@ -223,23 +223,36 @@ async def execute_data_collection(
         DataCollectionResponse: データ収集ジョブの開始情報と進捗
     """
     try:
-        # モックレスポンスを返す（本番環境での暫定対応）
+        # 実際のWebスクレイピングを実行
         import uuid
         from datetime import datetime
+        from ..services.forex_scraper import ForexScraper
         
         job_id = str(uuid.uuid4())
         
+        # 非同期でスクレイピングを実行
+        scraper = ForexScraper()
+        rate_data = await scraper.get_current_rate()
+        
+        # 取得成功をレスポンスに含める
+        message = f"データ収集を開始しました - {rate_data['source']}から取得"
+        
         return DataCollectionResponse(
             job_id=job_id,
-            status="started",
+            status="completed",
             started_at=datetime.now(),
-            message="データ収集を開始しました（デモモード）",
+            message=message,
             progress=CollectionProgress(
-                total=100,
-                completed=0,
+                total=1,
+                completed=1,
                 failed=0,
-                percentage=0.0
-            )
+                percentage=100.0
+            ),
+            collected_data={
+                "rate": rate_data['rate'],
+                "source": rate_data['source'],
+                "timestamp": rate_data['timestamp'].isoformat()
+            }
         )
     except Exception as e:
         raise HTTPException(

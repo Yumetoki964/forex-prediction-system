@@ -63,6 +63,10 @@ async def root():
 
 # Include routers with API prefix
 app.include_router(auth_router, tags=["authentication"])  # auth_router already has /api/auth prefix
+
+# 為替レートリアルタイム取得ルーター
+from .routers.forex_live import router as forex_live_router
+app.include_router(forex_live_router, tags=["forex"])
 app.include_router(data_router, prefix="/api/data", tags=["data"])
 app.include_router(rates_router, prefix="/api/rates", tags=["rates"]) 
 app.include_router(backtest_router, prefix="/api/backtest", tags=["backtest"])
