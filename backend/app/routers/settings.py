@@ -15,6 +15,8 @@ from decimal import Decimal
 import json
 
 from ..database import get_db
+from ..core.dependencies import get_current_active_user
+from ..models import User
 from ..schemas.settings import (
     PredictionSettingsResponse,
     PredictionSettingsUpdate,
@@ -36,7 +38,8 @@ router = APIRouter()
 
 @router.get("/prediction", response_model=PredictionSettingsResponse)
 async def get_prediction_settings(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
 ) -> PredictionSettingsResponse:
     """
     現在の予測設定を取得
@@ -63,7 +66,8 @@ async def get_prediction_settings(
 async def get_alert_settings(
     alert_type: Optional[str] = None,
     is_enabled: Optional[bool] = None,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
 ) -> List[AlertSettingsResponse]:
     """
     アラート設定を取得
@@ -93,7 +97,8 @@ async def get_alert_settings(
 @router.put("/prediction", response_model=UpdateResponse)
 async def update_prediction_settings(
     settings: PredictionSettingsUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
 ) -> UpdateResponse:
     """
     予測設定を更新
@@ -129,7 +134,8 @@ async def update_prediction_settings(
 async def update_alert_settings(
     alert_id: int,
     settings: AlertSettingsUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
 ) -> UpdateResponse:
     """
     アラート設定を更新
@@ -166,7 +172,8 @@ async def update_alert_settings(
 
 @router.post("/test", response_model=TestResultResponse)
 async def test_prediction_settings(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
 ) -> TestResultResponse:
     """
     現在設定での予測テストを実行

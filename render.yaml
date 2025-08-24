@@ -1,85 +1,26 @@
 services:
-  # Backend API Service
   - type: web
-    name: forex-backend
-    runtime: python
-    plan: starter
+    name: forex-prediction-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile.render
+    dockerContext: ./backend
+    plan: free
     region: oregon
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
-    rootDir: ./backend
-    healthCheckPath: /docs
-    autoDeploy: false
+    branch: main
+    healthCheckPath: /health
+    env: production
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: forex-postgres
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: forex-redis
-          property: connectionString
+        sync: false
       - key: SECRET_KEY
-        generateValue: true
-      - key: DEBUG
-        value: "False"
-      - key: LOG_LEVEL
-        value: "INFO"
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
       - key: ENVIRONMENT
-        value: "production"
-      - key: PROJECT_NAME
-        value: "Forex Prediction System"
-
-  # Frontend Static Site
-  - type: static
-    name: forex-frontend
-    runtime: node
-    plan: starter
-    region: oregon
-    buildCommand: "npm ci && npm run build"
-    staticPublishPath: ./dist
-    pullRequestPreviewsEnabled: true
-    rootDir: ./frontend
-    buildFilter:
-      paths:
-        - frontend/**
-      ignoredPaths:
-        - backend/**
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: X-XSS-Protection
-        value: 1; mode=block
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: NODE_ENV
         value: production
-      - key: VITE_API_URL
-        fromService:
-          type: web
-          name: forex-backend
-          property: host
-
-databases:
-  # PostgreSQL Database
-  - name: forex-postgres
-    databaseName: forex_prediction
-    user: forex_user
-    plan: starter
-    region: oregon
-    postgresMajorVersion: 15
-
-  # Redis Cache
-  - name: forex-redis
-    plan: starter
-    region: oregon
-    maxmemoryPolicy: allkeys-lru
+      - key: DEBUG
+        value: false
+      - key: API_PORT
+        value: 8000
+      - key: API_HOST
+        value: 0.0.0.0

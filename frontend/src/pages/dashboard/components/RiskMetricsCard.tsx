@@ -74,8 +74,8 @@ export const RiskMetricsCard: React.FC<RiskMetricsCardProps> = ({ data, loading,
     );
   }
 
-  const volatilityRisk = getRiskLevel(data.volatility);
-  const confidenceColor = getConfidenceColor(data.confidence_level);
+  const volatilityRisk = getRiskLevel(data.volatility || 0);
+  const confidenceColor = getConfidenceColor(data.confidence_level || 0);
 
   return (
     <Card sx={{ height: '100%' }}>
@@ -92,16 +92,16 @@ export const RiskMetricsCard: React.FC<RiskMetricsCardProps> = ({ data, loading,
                 ボラティリティ
               </Typography>
               <Typography variant="h5" sx={{ fontFamily: numericFont.fontFamily, mt: 1, color: volatilityRisk.color }}>
-                {data.volatility.toFixed(2)}%
+                {data.volatility?.toFixed(2) || '0.00'}%
               </Typography>
               <Typography variant="caption" sx={{ color: volatilityRisk.color, fontWeight: 'medium' }}>
                 リスク: {volatilityRisk.level}
               </Typography>
               <LinearProgress 
                 variant="determinate" 
-                value={Math.min(data.volatility * 20, 100)} 
+                value={Math.min((data.volatility || 0) * 20, 100)} 
                 sx={{ mt: 1, height: 4, borderRadius: 2 }}
-                color={data.volatility < 2 ? 'success' : data.volatility < 3 ? 'warning' : 'error'}
+                color={(data.volatility || 0) < 2 ? 'success' : (data.volatility || 0) < 3 ? 'warning' : 'error'}
               />
             </Box>
           </Grid>
@@ -113,13 +113,13 @@ export const RiskMetricsCard: React.FC<RiskMetricsCardProps> = ({ data, loading,
                 信頼水準
               </Typography>
               <Typography variant="h5" sx={{ fontFamily: numericFont.fontFamily, mt: 1, color: confidenceColor }}>
-                {Math.round(data.confidence_level)}%
+                {Math.round(data.confidence_level || 0)}%
               </Typography>
               <LinearProgress 
                 variant="determinate" 
-                value={data.confidence_level} 
+                value={data.confidence_level || 0} 
                 sx={{ mt: 1, height: 4, borderRadius: 2 }}
-                color={data.confidence_level >= 90 ? 'success' : data.confidence_level >= 70 ? 'warning' : 'error'}
+                color={(data.confidence_level || 0) >= 90 ? 'success' : (data.confidence_level || 0) >= 70 ? 'warning' : 'error'}
               />
             </Box>
           </Grid>
@@ -135,7 +135,7 @@ export const RiskMetricsCard: React.FC<RiskMetricsCardProps> = ({ data, loading,
                     VaR 95%
                   </Typography>
                   <Typography variant="body2" sx={{ fontFamily: numericFont.fontFamily, fontWeight: 'medium' }}>
-                    {data.var_95.toFixed(2)}%
+                    {data.var_95?.toFixed(2) || '0.00'}%
                   </Typography>
                 </Grid>
               )}
@@ -145,7 +145,7 @@ export const RiskMetricsCard: React.FC<RiskMetricsCardProps> = ({ data, loading,
                     最大DD
                   </Typography>
                   <Typography variant="body2" sx={{ fontFamily: numericFont.fontFamily, fontWeight: 'medium' }}>
-                    {data.max_drawdown.toFixed(2)}%
+                    {data.max_drawdown?.toFixed(2) || '0.00'}%
                   </Typography>
                 </Grid>
               )}
@@ -155,7 +155,7 @@ export const RiskMetricsCard: React.FC<RiskMetricsCardProps> = ({ data, loading,
                     シャープ
                   </Typography>
                   <Typography variant="body2" sx={{ fontFamily: numericFont.fontFamily, fontWeight: 'medium' }}>
-                    {data.sharpe_ratio.toFixed(2)}
+                    {data.sharpe_ratio?.toFixed(2) || '0.00'}
                   </Typography>
                 </Grid>
               )}

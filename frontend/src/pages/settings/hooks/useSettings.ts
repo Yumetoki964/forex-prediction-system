@@ -3,7 +3,7 @@ import { PredictionSettings } from '../components/PredictionSettingsForm';
 import { AlertSettings } from '../components/AlertSettingsForm';
 
 // API設定
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8173';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // 設定テストの結果型
 export interface SettingsTestResult {

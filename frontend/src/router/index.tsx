@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import MainLayout from '@/layouts/MainLayout';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { CircularProgress, Box } from '@mui/material';
 
 // ページの遅延読み込み
@@ -10,6 +11,10 @@ const BacktestPage = lazy(() => import('@/pages/backtest'));
 const DataManagementPage = lazy(() => import('@/pages/data-management'));
 const SettingsPage = lazy(() => import('@/pages/settings'));
 const SourcesPage = lazy(() => import('@/pages/sources'));
+
+// 認証ページ
+const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
+const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'));
 
 // ローディングコンポーネント
 const PageLoader = () => (
@@ -82,9 +87,32 @@ export const pages: PageInfo[] = [
 
 // ルーター設定
 export const router = createBrowserRouter([
+  // 認証ページ（レイアウトなし）
+  {
+    path: '/login',
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <LoginPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/register',
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <RegisterPage />
+      </Suspense>
+    ),
+  },
+  
+  // メインアプリケーション（認証保護）
   {
     path: '/',
-    element: <MainLayout />,
+    element: (
+      <ProtectedRoute>
+        <MainLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
@@ -117,9 +145,11 @@ export const router = createBrowserRouter([
       {
         path: 'data-management',
         element: (
-          <Suspense fallback={<PageLoader />}>
-            <DataManagementPage />
-          </Suspense>
+          <ProtectedRoute requireAdmin={true}>
+            <Suspense fallback={<PageLoader />}>
+              <DataManagementPage />
+            </Suspense>
+          </ProtectedRoute>
         ),
       },
       {
@@ -133,9 +163,11 @@ export const router = createBrowserRouter([
       {
         path: 'sources',
         element: (
-          <Suspense fallback={<PageLoader />}>
-            <SourcesPage />
-          </Suspense>
+          <ProtectedRoute requireAdmin={true}>
+            <Suspense fallback={<PageLoader />}>
+              <SourcesPage />
+            </Suspense>
+          </ProtectedRoute>
         ),
       },
     ],

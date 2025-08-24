@@ -13,11 +13,15 @@ import {
   useMediaQuery,
   Divider,
   ListSubheader,
+  AppBar,
+  Toolbar,
 } from '@mui/material';
 import { Menu as MenuIcon } from '@mui/icons-material';
 import { useAppStore, selectSidebarOpen } from '@/stores/appStore';
 import { getPagesBySection } from '@/router';
 import { APP_CONFIG } from '@/config/api.config';
+import { useAuth } from '@/contexts/AuthContext';
+import UserMenu from '@/components/auth/UserMenu';
 
 const DRAWER_WIDTH = 280;
 
@@ -29,6 +33,7 @@ const MainLayout = () => {
   
   const sidebarOpen = useAppStore(selectSidebarOpen);
   const { setSidebarOpen } = useAppStore();
+  const { user } = useAuth();
 
   // モバイル環境でのサイドバー制御
   useEffect(() => {
@@ -137,84 +142,121 @@ const MainLayout = () => {
 
       <Divider sx={{ my: 1 }} />
 
-      {/* 管理メニュー */}
-      <List
-        subheader={
-          <ListSubheader
-            sx={{
-              backgroundColor: 'transparent',
-              color: 'text.disabled',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              px: 3,
-              py: 2,
-            }}
-          >
-            管理機能
-          </ListSubheader>
-        }
-      >
-        {getPagesBySection('management').map((page) => (
-          <ListItem
-            key={page.id}
-            button
-            selected={location.pathname === page.path}
-            onClick={() => handleMenuItemClick(page.path)}
-            sx={{
-              mx: 1,
-              borderRadius: 1,
-              '&.Mui-selected': {
-                backgroundColor: 'rgba(0, 212, 255, 0.1)',
-                borderLeft: '3px solid #00d4ff',
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 212, 255, 0.15)',
-                },
-              },
-            }}
-          >
-            <ListItemIcon
+      {/* 管理メニュー（管理者のみ表示） */}
+      {user?.role === 'admin' && (
+        <List
+          subheader={
+            <ListSubheader
               sx={{
-                minWidth: 40,
-                fontSize: '1.25rem',
+                backgroundColor: 'transparent',
+                color: 'text.disabled',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                px: 3,
+                py: 2,
               }}
             >
-              {page.icon}
-            </ListItemIcon>
-            <ListItemText
-              primary={page.title}
-              primaryTypographyProps={{
-                fontSize: '0.9rem',
-                fontWeight: location.pathname === page.path ? 600 : 500,
+              管理機能
+            </ListSubheader>
+          }
+        >
+          {getPagesBySection('management').map((page) => (
+            <ListItem
+              key={page.id}
+              button
+              selected={location.pathname === page.path}
+              onClick={() => handleMenuItemClick(page.path)}
+              sx={{
+                mx: 1,
+                borderRadius: 1,
+                '&.Mui-selected': {
+                  backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                  borderLeft: '3px solid #00d4ff',
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 212, 255, 0.15)',
+                  },
+                },
               }}
-            />
-          </ListItem>
-        ))}
-      </List>
+            >
+              <ListItemIcon
+                sx={{
+                  minWidth: 40,
+                  fontSize: '1.25rem',
+                }}
+              >
+                {page.icon}
+              </ListItemIcon>
+              <ListItemText
+                primary={page.title}
+                primaryTypographyProps={{
+                  fontSize: '0.9rem',
+                  fontWeight: location.pathname === page.path ? 600 : 500,
+                }}
+              />
+            </ListItem>
+          ))}
+        </List>
+      )}
     </Box>
   );
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      {/* モバイル用ハンバーガーメニューボタン */}
+      {/* ヘッダー（モバイル時のみ表示） */}
       {isMobile && (
-        <IconButton
-          onClick={handleDrawerToggle}
+        <AppBar
+          position="fixed"
           sx={{
-            position: 'fixed',
-            top: 16,
-            left: 16,
             zIndex: theme.zIndex.drawer + 1,
-            backgroundColor: 'primary.main',
-            color: 'primary.contrastText',
-            '&:hover': {
-              backgroundColor: 'primary.dark',
-            },
+            backgroundColor: 'background.paper',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            boxShadow: 'none',
           }}
         >
-          <MenuIcon />
-        </IconButton>
+          <Toolbar>
+            <IconButton
+              edge="start"
+              onClick={handleDrawerToggle}
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography
+              variant="h6"
+              sx={{
+                flexGrow: 1,
+                background: 'linear-gradient(135deg, #00d4ff, #0099cc)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                fontWeight: 'bold',
+              }}
+            >
+              {APP_CONFIG.name}
+            </Typography>
+            <UserMenu />
+          </Toolbar>
+        </AppBar>
+      )}
+
+      {/* デスクトップ用ヘッダー（サイドバー内） */}
+      {!isMobile && sidebarOpen && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            zIndex: theme.zIndex.drawer - 1,
+            p: 2,
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <UserMenu />
+        </Box>
       )}
 
       {/* サイドバー */}
@@ -252,7 +294,7 @@ const MainLayout = () => {
             duration: theme.transitions.duration.leavingScreen,
           }),
           marginLeft: isMobile ? 0 : sidebarOpen ? 0 : `-${DRAWER_WIDTH}px`,
-          pt: isMobile ? 8 : 0, // モバイル時はハンバーガーメニュー分のパディング
+          pt: isMobile ? 8 : 0, // モバイル時はヘッダー分のパディング
         }}
       >
         {/* ページコンテンツ */}

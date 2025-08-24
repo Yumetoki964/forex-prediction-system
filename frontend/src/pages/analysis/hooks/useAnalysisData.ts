@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8173';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export interface ChartDataPoint {
   timestamp: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
+  open_rate: number;
+  high_rate: number;
+  low_rate: number;
+  close_rate: number;
   volume?: number;
 }
 
@@ -36,9 +36,11 @@ export interface DetailedPredictionData {
 }
 
 export interface HistoricalChartsResponse {
-  data: ChartDataPoint[];
+  candlestick_data: ChartDataPoint[];
   period: string;
-  currency_pair: string;
+  timeframe: string;
+  start_date: string;
+  end_date: string;
 }
 
 export interface TechnicalIndicatorsResponse {

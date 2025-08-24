@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forex Prediction System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 3rem;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        h1 {
+            color: #1e3c72;
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+            text-align: center;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #2a5298;
+        }
+        
+        button {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .demo-accounts {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .demo-title {
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+        
+        .demo-account {
+            background: #f5f5f5;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .demo-account code {
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        
+        .status {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        
+        .dashboard {
+            display: none;
+        }
+        
+        .dashboard.active {
+            display: block;
+        }
+        
+        .user-info {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-label {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loginForm">
+            <h1>Forex Prediction System</h1>
+            <p class="subtitle">AI駆動の為替予測システム</p>
+            
+            <form id="authForm">
+                <div class="form-group">
+                    <label for="username">ユーザー名</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">パスワード</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <button type="submit">ログイン</button>
+            </form>
+            
+            <div id="status" class="status"></div>
+            
+            <div class="demo-accounts">
+                <div class="demo-title">デモアカウント:</div>
+                <div class="demo-account">
+                    管理者: <code>admin</code> / <code>password</code>
+                </div>
+                <div class="demo-account">
+                    一般ユーザー: <code>user</code> / <code>password</code>
+                </div>
+            </div>
+        </div>
+        
+        <div id="dashboard" class="dashboard">
+            <h1>ダッシュボード</h1>
+            
+            <div class="user-info">
+                <strong>ログイン中:</strong> <span id="currentUser"></span>
+                <button onclick="logout()" style="float: right; width: auto; padding: 0.5rem 1rem;">ログアウト</button>
+            </div>
+            
+            <div class="metrics">
+                <div class="metric-card">
+                    <div class="metric-value">¥150.25</div>
+                    <div class="metric-label">USD/JPY</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">買い</div>
+                    <div class="metric-label">シグナル</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">85%</div>
+                    <div class="metric-label">予測精度</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">低</div>
+                    <div class="metric-label">リスクレベル</div>
+                </div>
+            </div>
+            
+            <button onclick="window.open('http://localhost:8174/docs', '_blank')">APIドキュメントを開く</button>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8174';
+        
+        document.getElementById('authForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const statusEl = document.getElementById('status');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ username, password }),
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    statusEl.className = 'status success';
+                    statusEl.textContent = 'ログイン成功！';
+                    
+                    // ダッシュボードを表示
+                    setTimeout(() => {
+                        document.getElementById('loginForm').style.display = 'none';
+                        document.getElementById('dashboard').classList.add('active');
+                        document.getElementById('currentUser').textContent = username;
+                    }, 1000);
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = 'ログインに失敗しました。ユーザー名とパスワードを確認してください。';
+                }
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = 'サーバーに接続できません。バックエンドが起動しているか確認してください。';
+            }
+        });
+        
+        function logout() {
+            document.getElementById('dashboard').classList.remove('active');
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('status').className = 'status';
+        }
+    </script>
+</body>
+</html>

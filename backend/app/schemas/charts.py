@@ -62,7 +62,6 @@ class TechnicalIndicatorType(str, Enum):
 class CandlestickData(BaseModel):
     """ローソク足データ"""
     timestamp: datetime = Field(..., description="時刻")
-    date: date = Field(..., description="日付")
     open_rate: float = Field(..., description="始値", gt=0)
     high_rate: float = Field(..., description="高値", gt=0)
     low_rate: float = Field(..., description="安値", gt=0)

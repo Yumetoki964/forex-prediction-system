@@ -36,6 +36,10 @@ Base = declarative_base()
 # Enums
 # ===================================================================
 
+class UserRole(PyEnum):
+    ADMIN = "admin"
+    USER = "user"
+
 class SignalType(PyEnum):
     STRONG_SELL = "strong_sell"
     SELL = "sell"
@@ -590,6 +594,52 @@ class TechnicalIndicator(Base):
     )
 
 # ===================================================================
+# ユーザー認証モデル
+# ===================================================================
+
+class User(Base):
+    """
+    ユーザーテーブル
+    
+    JWT認証によるユーザー管理。管理者と一般ユーザーの役割分離。
+    パスワードはbcryptでハッシュ化して保存。
+    """
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    
+    # ユーザー情報
+    full_name = Column(String(100), nullable=True)
+    role = Column(Enum(UserRole), nullable=False, default=UserRole.USER)
+    
+    # アカウント状態
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_verified = Column(Boolean, default=False, nullable=False)
+    
+    # セキュリティ
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    last_login_at = Column(DateTime, nullable=True)
+    last_failed_login_at = Column(DateTime, nullable=True)
+    password_changed_at = Column(DateTime, default=func.now(), nullable=False)
+    
+    # タイムスタンプ
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    
+    # インデックス
+    __table_args__ = (
+        Index('idx_users_email_active', 'email', 'is_active'),
+        Index('idx_users_username_active', 'username', 'is_active'),
+        Index('idx_users_role', 'role'),
+        CheckConstraint('failed_login_attempts >= 0', name='check_failed_attempts_non_negative'),
+        CheckConstraint('length(username) >= 3', name='check_username_min_length'),
+        CheckConstraint('length(email) >= 5', name='check_email_min_length'),
+    )
+
+# ===================================================================
 # システム設定モデル
 # ===================================================================
 
@@ -652,6 +702,7 @@ def get_all_models():
     マイグレーション時にAlembicが参照する
     """
     return [
+        User,
         ExchangeRate,
         Prediction,
         TradingSignal,

@@ -52,19 +52,26 @@ class RatesService:
             current_time = datetime.now()
             
             if not latest_rate:
-                # フォールバック：固定データを返す（開発時のみ）
-                logger.warning("No rate data available, returning fallback data")
+                # フォールバック：リアルな市場データ風のモックを返す（開発時のみ）
+                import random
+                logger.warning("No rate data available, returning mock market data")
+                
+                # 2024年8月現在の現実的なドル円レート付近で変動
+                base_rate = 149.50
+                rate = base_rate + random.uniform(-0.5, 0.5)
+                change_24h = random.uniform(-1.5, 1.5)
+                
                 return CurrentRateResponse(
-                    rate=150.25,
+                    rate=round(rate, 2),
                     timestamp=current_time,
-                    change_24h=0.0,
-                    change_percentage_24h=0.0,
-                    open_rate=None,
-                    high_rate=None,
-                    low_rate=None,
-                    volume=None,
+                    change_24h=round(change_24h, 2),
+                    change_percentage_24h=round(change_24h / base_rate * 100, 2),
+                    open_rate=round(base_rate - 0.2, 2),
+                    high_rate=round(rate + random.uniform(0, 0.5), 2),
+                    low_rate=round(rate - random.uniform(0, 0.5), 2),
+                    volume=random.randint(100000, 500000),
                     is_market_open=self._is_market_open(current_time),
-                    source="fallback"
+                    source="mock_market"
                 )
 
             # 24時間変動計算

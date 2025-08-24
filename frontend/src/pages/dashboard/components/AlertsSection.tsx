@@ -60,7 +60,7 @@ export const AlertsSection: React.FC<AlertsSectionProps> = ({ alerts, loading, e
     );
   }
 
-  if (!alerts || alerts.length === 0) {
+  if (!alerts || !Array.isArray(alerts) || alerts.length === 0) {
     return (
       <Box>
         <Typography variant="h6" color="text.primary" sx={{ mb: 2, fontWeight: 'medium' }}>

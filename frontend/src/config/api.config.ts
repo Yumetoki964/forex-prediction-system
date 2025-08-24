@@ -1,13 +1,13 @@
 // API設定
 export const API_CONFIG = {
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8173',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
   timeout: 30000,
   withCredentials: false,
 } as const;
 
 // WebSocket設定
 export const WS_CONFIG = {
-  url: import.meta.env.VITE_WS_URL || 'ws://localhost:8173',
+  url: import.meta.env.VITE_WS_URL || 'ws://localhost:8000',
   reconnectInterval: 3000,
   maxReconnectAttempts: 5,
 } as const;

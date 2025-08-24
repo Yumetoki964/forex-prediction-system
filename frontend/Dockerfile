@@ -1,38 +1,39 @@
-# React + Vite Frontend Dockerfile
+# Frontend Dockerfile
+# Build stage
 FROM node:18-alpine AS builder
 
-# 作業ディレクトリの設定
+# Set working directory
 WORKDIR /app
 
-# package.jsonとpackage-lock.jsonをコピー
+# Copy package files
 COPY package*.json ./
 
-# 依存関係のインストール
-RUN npm ci --only=production
+# Install dependencies
+RUN npm ci
 
-# ソースコードをコピー
+# Copy source code
 COPY . .
 
-# 環境変数ファイルのコピー（ビルド時に使用）
-ARG NODE_ENV=production
-ENV NODE_ENV=$NODE_ENV
-
-# TypeScriptコンパイルとビルド
+# Build the application
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
 RUN npm run build
 
-# Production用のNginxステージ
+# Production stage
 FROM nginx:alpine
 
-# Nginxの設定をコピー
+# Copy built application from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/nginx.conf
 
-# ヘルスチェック
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:80 || exit 1
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# ポートの公開
+# Expose port
 EXPOSE 80
 
-# 実行コマンド
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:80 || exit 1
+
+# Start nginx
 CMD ["nginx", "-g", "daemon off;"]

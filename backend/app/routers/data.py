@@ -13,6 +13,8 @@ from fastapi import APIRouter, HTTPException, status, Query, Depends
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..core.dependencies import get_current_admin_user
+from ..models import User
 
 from ..schemas.data import (
     # 既存のスキーマ
@@ -45,7 +47,10 @@ router = APIRouter()
 
 
 @router.get("/status", response_model=DataStatusResponse)
-async def get_data_status(db: Session = Depends(get_db)) -> DataStatusResponse:
+async def get_data_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+) -> DataStatusResponse:
     """
     データ収集状況とカバレッジを取得
     
@@ -67,7 +72,8 @@ async def get_data_status(db: Session = Depends(get_db)) -> DataStatusResponse:
 
 @router.get("/sources", response_model=DataSourcesResponse)
 async def get_data_sources(
-    include_inactive: bool = Query(False, description="非アクティブソースも含める")
+    include_inactive: bool = Query(False, description="非アクティブソースも含める"),
+    current_user: User = Depends(get_current_admin_user)
 ) -> DataSourcesResponse:
     """
     データソースの稼働状況を取得
@@ -186,7 +192,8 @@ async def get_data_sources(
 @router.post("/collect", response_model=DataCollectionResponse)
 async def execute_data_collection(
     request: DataCollectionRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
 ) -> DataCollectionResponse:
     """
     データ収集を実行
@@ -213,7 +220,8 @@ async def execute_data_collection(
 @router.get("/quality", response_model=DataQualityReport)
 async def get_data_quality_report(
     period_days: int = Query(7, ge=1, le=90, description="品質分析期間（日数）"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
 ) -> DataQualityReport:
     """
     データ品質レポートを取得
@@ -240,7 +248,8 @@ async def get_data_quality_report(
 @router.post("/repair", response_model=DataRepairResponse)
 async def execute_data_repair(
     request: DataRepairRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
 ) -> DataRepairResponse:
     """
     欠損データの修復を実行

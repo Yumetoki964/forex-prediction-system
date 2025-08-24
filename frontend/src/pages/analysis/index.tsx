@@ -36,9 +36,9 @@ const AnalysisPage = () => {
   const { data: predictionData } = useDetailedPredictions();
 
   // Transform chart data for ApexCharts candlestick format
-  const candlestickData = chartData?.data?.map((point: ChartDataPoint) => ({
+  const candlestickData = chartData?.candlestick_data?.map((point: ChartDataPoint) => ({
     x: new Date(point.timestamp),
-    y: [point.open, point.high, point.low, point.close]
+    y: [point.open_rate, point.high_rate, point.low_rate, point.close_rate]
   })) || [
     // Fallback mock data if API is not available
     { x: new Date('2024-01-01'), y: [148.50, 149.20, 148.30, 149.00] },

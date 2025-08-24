@@ -2,65 +2,74 @@ version: '3.8'
 
 services:
   # PostgreSQL Database
-  postgres:
+  db:
     image: postgres:15-alpine
-    container_name: forex_postgres_${NODE_ENV:-local}
+    container_name: forex_db
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-forex_prediction_local}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-forex_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-forex_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-forex_prediction_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - forex_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U forex_user -d forex_prediction_db"]
+      interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - forex_network
 
-  # Redis Cache (Optional)
+  # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: forex_redis_${NODE_ENV:-local}
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
+    container_name: forex_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+    ports:
+      - "6379:6379"
     networks:
       - forex_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Backend API
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: forex_backend_${NODE_ENV:-local}
+    container_name: forex_backend
+    restart: unless-stopped
     env_file:
-      - .env.${NODE_ENV:-local}
+      - ./backend/.env.production
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-forex_prediction_local}
-      - REDIS_URL=redis://redis:6379/0
+      DATABASE_URL: postgresql://forex_user:forex_pass@db:5432/forex_prediction_db
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+      - backend_logs:/app/logs
     ports:
-      - "${API_PORT:-8173}:8080"
+      - "8000:8000"
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./backend/logs:/app/logs
-      - ./backend/models:/app/models
-    restart: unless-stopped
     networks:
       - forex_network
+    command: >
+      sh -c "
+        alembic upgrade head &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+      "
 
   # Frontend Application
   frontend:
@@ -68,22 +77,101 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NODE_ENV: ${NODE_ENV:-local}
-    container_name: forex_frontend_${NODE_ENV:-local}
-    environment:
-      - VITE_API_URL=http://localhost:${API_PORT:-8173}
+        VITE_API_URL: http://backend:8000
+    container_name: forex_frontend
+    restart: unless-stopped
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     ports:
-      - "${FRONTEND_PORT:-3173}:80"
+      - "80:80"
     depends_on:
       - backend
-    restart: unless-stopped
     networks:
       - forex_network
 
-volumes:
-  postgres_data:
-  redis_data:
+  # Nginx Reverse Proxy (Optional - for production)
+  nginx:
+    image: nginx:alpine
+    container_name: forex_nginx
+    restart: unless-stopped
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - nginx_logs:/var/log/nginx
+    ports:
+      - "443:443"
+      - "8080:80"
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - forex_network
+
+  # pgAdmin (Database Management - Optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: forex_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@forex.com
+      PGADMIN_DEFAULT_PASSWORD: admin_password
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "5050:80"
+    networks:
+      - forex_network
+    profiles:
+      - dev
+
+  # Prometheus (Monitoring - Optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: forex_prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    networks:
+      - forex_network
+    profiles:
+      - monitoring
+
+  # Grafana (Visualization - Optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: forex_grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin_password
+      GF_INSTALL_PLUGINS: 
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    networks:
+      - forex_network
+    profiles:
+      - monitoring
 
 networks:
   forex_network:
     driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  backend_logs:
+  nginx_logs:
+  pgadmin_data:
+  prometheus_data:
+  grafana_data:
