@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: forex-prediction-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile.render
+    rootDir: .
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: PYTHONUNBUFFERED
+        value: 1

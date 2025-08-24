@@ -18,9 +18,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # アプリケーションコード
 COPY . .
 
-# 起動スクリプトに実行権限を付与
-RUN chmod +x /app/render_start.sh
-
 # ログディレクトリ
 RUN mkdir -p /app/logs
 
@@ -28,12 +25,11 @@ RUN mkdir -p /app/logs
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-# ポート公開
+# ポート公開（Renderは自動的にPORT環境変数を設定）
 EXPOSE 8000
 
-# ヘルスチェック
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# デバッグのため、まずテストインポートを実行
+RUN python app/test_import.py || true
 
-# 起動コマンド（Renderの無料プランに最適化）
-CMD ["/app/render_start.sh"]
+# シンプルな起動コマンド
+CMD python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
