@@ -24,7 +24,11 @@ from .routers.alerts import router as alerts_router
 from .routers.metrics import router as metrics_router
 from .api.endpoints.charts import router as charts_router
 from .api.endpoints.indicators import router as indicators_router
-from .services.scheduler_service import scheduler_service
+# Conditionally import scheduler service
+try:
+    from .services.scheduler_service import scheduler_service
+except ImportError:
+    scheduler_service = None
 
 # Create FastAPI instance
 app = FastAPI(
@@ -86,12 +90,17 @@ from .routers.forex_live import router as forex_live_router
 from .routers.historical_data import router as historical_data_router
 from .routers.scheduler import router as scheduler_router
 from .routers.data_update import router as data_update_router
-from .routers.ml_prediction import router as ml_prediction_router
+# Conditionally import ML prediction router
+try:
+    from .routers.ml_prediction import router as ml_prediction_router
+except ImportError:
+    ml_prediction_router = None
 app.include_router(forex_live_router, tags=["forex"])
 app.include_router(historical_data_router, tags=["historical-data"])
 app.include_router(scheduler_router, tags=["scheduler"])
 app.include_router(data_update_router, tags=["data-update"])
-app.include_router(ml_prediction_router, tags=["ml-prediction"])
+if ml_prediction_router:
+    app.include_router(ml_prediction_router, tags=["ml-prediction"])
 app.include_router(data_router, prefix="/api/data", tags=["data"])
 app.include_router(rates_router, prefix="/api/rates", tags=["rates"]) 
 app.include_router(backtest_router, prefix="/api/backtest", tags=["backtest"])
