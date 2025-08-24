@@ -35,10 +35,15 @@ app = FastAPI(
 )
 
 # CORS middleware
-# CORS設定 - 一時的に全許可（デバッグ用）
+# CORS設定
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 全オリジン許可（本番では制限推奨）
+    allow_origins=[
+        "https://forex-prediction-system.vercel.app",
+        "https://forex-prediction-system-*.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
