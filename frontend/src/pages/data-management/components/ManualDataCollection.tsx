@@ -41,7 +41,7 @@ const ManualDataCollection: React.FC = () => {
         force_update: true,
       });
 
-      setCollectionId(response.collection_id);
+      setCollectionId(response.job_id || 'unknown');
       
       // プログレスバーをシミュレート（実際の実装では WebSocket やポーリングを使用）
       const progressInterval = setInterval(() => {
@@ -61,9 +61,20 @@ const ManualDataCollection: React.FC = () => {
         });
       }, 500);
 
-    } catch (error) {
+    } catch (error: any) {
+      console.error('データ収集エラーの詳細:', error);
       setProgressOpen(false);
-      setSnackbarMessage(`データ収集に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+      
+      let errorMessage = 'データ収集に失敗しました';
+      if (error?.response?.data?.detail) {
+        errorMessage += `: ${error.response.data.detail}`;
+      } else if (error?.message) {
+        errorMessage += `: ${error.message}`;
+      } else if (error?.code === 'ERR_NETWORK') {
+        errorMessage = 'ネットワークエラー: バックエンドサーバーに接続できません。しばらく待ってから再試行してください。';
+      }
+      
+      setSnackbarMessage(errorMessage);
       setSnackbarSeverity('error');
       setSnackbarOpen(true);
     }
