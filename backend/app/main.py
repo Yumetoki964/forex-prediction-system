@@ -35,24 +35,42 @@ app = FastAPI(
 )
 
 # CORS middleware
-origins = [
-    "http://localhost:3000",
-    "http://localhost:5173", 
-    "http://127.0.0.1:5173",
-    "http://localhost:3173",
-    "http://127.0.0.1:3173",
-    "http://localhost:8000",
-    "https://forex-prediction-system.vercel.app",
-    "https://*.vercel.app"  # Vercelのプレビューデプロイ用
-]
+# CORS設定を環境に応じて調整
+if os.getenv("ENVIRONMENT") == "production":
+    origins = [
+        "https://forex-prediction-system.vercel.app",
+        "https://forex-prediction-system-*.vercel.app",
+    ]
+else:
+    origins = [
+        "http://localhost:3000",
+        "http://localhost:5173", 
+        "http://127.0.0.1:5173",
+        "http://localhost:3173",
+        "http://127.0.0.1:3173",
+        "http://localhost:8000",
+        "https://forex-prediction-system.vercel.app",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """ヘルスチェックエンドポイント"""
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+@app.get("/")
+async def root():
+    """ルートエンドポイント"""
+    return {"message": "Forex Prediction System API", "version": "1.0.0"}
 
 # Include routers with API prefix
 app.include_router(auth_router, tags=["authentication"])  # auth_router already has /api/auth prefix
