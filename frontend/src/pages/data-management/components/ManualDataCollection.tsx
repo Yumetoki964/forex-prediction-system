@@ -41,7 +41,7 @@ const ManualDataCollection: React.FC = () => {
         force_update: true,
       });
 
-      setCollectionId(response.job_id || 'unknown');
+      setCollectionId((response as any).job_id || 'unknown');
       
       // プログレスバーをシミュレート（実際の実装では WebSocket やポーリングを使用）
       const progressInterval = setInterval(() => {

@@ -6,7 +6,6 @@ import {
   Box,
   Grid,
   Chip,
-  Button,
   CircularProgress,
   Alert,
   Tooltip,
@@ -19,12 +18,9 @@ import {
   Remove,
   Psychology,
   RefreshRounded,
-  ModelTraining,
-  QueryStats
+  ModelTraining
 } from '@mui/icons-material';
 import {
-  LineChart,
-  Line,
   Area,
   XAxis,
   YAxis,
@@ -33,10 +29,10 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
-  ComposedChart
+  ComposedChart,
+  Line
 } from 'recharts';
 import { format, addDays } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import axios from 'axios';
 
 interface MLPrediction {
@@ -141,7 +137,7 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
           lower: pred.confidence_interval.lower,
           upper: pred.confidence_interval.upper,
           label: config.label,
-          actual: null
+          actual: undefined
         });
       }
     });
