@@ -35,28 +35,12 @@ app = FastAPI(
 )
 
 # CORS middleware
-# CORS設定を環境に応じて調整
-if os.getenv("ENVIRONMENT") == "production":
-    origins = [
-        "https://forex-prediction-system.vercel.app",
-        "https://forex-prediction-system-*.vercel.app",
-    ]
-else:
-    origins = [
-        "http://localhost:3000",
-        "http://localhost:5173", 
-        "http://127.0.0.1:5173",
-        "http://localhost:3173",
-        "http://127.0.0.1:3173",
-        "http://localhost:8000",
-        "https://forex-prediction-system.vercel.app",
-    ]
-
+# CORS設定 - 一時的に全許可（デバッグ用）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # 全オリジン許可（本番では制限推奨）
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
