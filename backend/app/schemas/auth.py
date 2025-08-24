@@ -4,7 +4,7 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, Field, validator, field_validator
 from ..models import UserRole
 
 
@@ -15,9 +15,18 @@ from ..models import UserRole
 class UserRegister(BaseModel):
     """ユーザー登録リクエスト"""
     username: str = Field(..., min_length=3, max_length=50, description="ユーザー名（3-50文字）")
-    email: EmailStr = Field(..., description="メールアドレス")
+    email: str = Field(..., description="メールアドレス")
     password: str = Field(..., min_length=8, max_length=100, description="パスワード（8文字以上）")
     full_name: Optional[str] = Field(None, max_length=100, description="フルネーム")
+    
+    @validator('email')
+    def validate_email(cls, v):
+        """メールアドレス形式チェック"""
+        import re
+        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_regex, v):
+            raise ValueError('有効なメールアドレス形式ではありません')
+        return v
     
     @validator('password')
     def validate_password(cls, v):
