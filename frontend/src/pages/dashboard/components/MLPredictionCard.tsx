@@ -136,9 +136,8 @@ export const MLPredictionCard: React.FC<MLPredictionCardProps> = ({
           predicted: pred.predicted_rate,
           lower: pred.confidence_interval.lower,
           upper: pred.confidence_interval.upper,
-          label: config.label,
-          actual: undefined
-        });
+          label: config.label
+        } as any);
       }
     });
 
