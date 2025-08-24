@@ -1,16 +1,30 @@
-# Render.com用Dockerfile（ポート修正版）
+# Render.com用Dockerfile（本番版）
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# 最小限の依存関係をインストール
-RUN pip install fastapi uvicorn[standard]
+# システム依存関係のインストール
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# シンプルなテストファイルをコピー
-COPY simple_test.py .
+# Pythonの依存関係をインストール
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Renderがポートを自動設定することを明示
+# アプリケーションコードをコピー
+COPY . .
+
+# ログディレクトリ作成
+RUN mkdir -p /app/logs
+
+# 環境変数設定
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Renderのデフォルトポート
 ENV PORT=10000
 
-# uvicornを直接実行（$PORTを使用）
-CMD uvicorn simple_test:app --host 0.0.0.0 --port $PORT
+# 本番アプリケーションを起動
+CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT --log-level info
