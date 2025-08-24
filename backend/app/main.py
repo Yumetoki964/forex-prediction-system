@@ -41,14 +41,21 @@ app = FastAPI(
 
 # CORS middleware
 # CORS設定
+cors_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else []
+default_origins = [
+    "https://forex-prediction-system.vercel.app",
+    "https://forex-prediction-system-*.vercel.app",
+    "https://forex-prediction-frontend.vercel.app",
+    "https://*.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:5174",
+]
+all_origins = list(set(cors_origins + default_origins))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://forex-prediction-system.vercel.app",
-        "https://forex-prediction-system-*.vercel.app",
-        "http://localhost:5173",
-        "http://localhost:3000",
-    ],
+    allow_origins=all_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
