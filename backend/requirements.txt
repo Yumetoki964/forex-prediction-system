@@ -19,6 +19,7 @@ scikit-learn==1.3.2
 # HTTP and API
 httpx==0.25.2
 requests==2.31.0
+aiohttp==3.9.1
 
 # Web scraping
 beautifulsoup4==4.12.2
