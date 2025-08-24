@@ -97,6 +97,7 @@ from .routers.forex_live import router as forex_live_router
 from .routers.historical_data import router as historical_data_router
 from .routers.scheduler import router as scheduler_router
 from .routers.data_update import router as data_update_router
+from .routers.sources import router as sources_router
 # Conditionally import ML prediction router
 try:
     from .routers.ml_prediction import router as ml_prediction_router
@@ -106,6 +107,7 @@ app.include_router(forex_live_router, tags=["forex"])
 app.include_router(historical_data_router, tags=["historical-data"])
 app.include_router(scheduler_router, tags=["scheduler"])
 app.include_router(data_update_router, tags=["data-update"])
+app.include_router(sources_router, prefix="/api/sources", tags=["sources"])
 if ml_prediction_router:
     app.include_router(ml_prediction_router, tags=["ml-prediction"])
 app.include_router(data_router, prefix="/api/data", tags=["data"])
